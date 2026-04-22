@@ -9,7 +9,7 @@ type LeaderBoard = SortedMap<HeroUniqueKey, IHeroInfo>;
 
 export default class LeaderBoardController implements ILeaderBoardController {
     /**
-     * 6 pool theo rarity
+     * 10 pool theo rarity
      */
     #pools: Map<PoolIndex, LeaderBoard> = new Map();
 
@@ -29,6 +29,10 @@ export default class LeaderBoardController implements ILeaderBoardController {
         this.#pools.set(HeroRarity.Epic, new SortedMap(leaderBoardDescSort));
         this.#pools.set(HeroRarity.Legend, new SortedMap(leaderBoardDescSort));
         this.#pools.set(HeroRarity.SuperLegend, new SortedMap(leaderBoardDescSort));
+        this.#pools.set(HeroRarity.Mega, new SortedMap(leaderBoardDescSort));
+        this.#pools.set(HeroRarity.SuperMega, new SortedMap(leaderBoardDescSort));
+        this.#pools.set(HeroRarity.Mystic, new SortedMap(leaderBoardDescSort));
+        this.#pools.set(HeroRarity.SuperMystic, new SortedMap(leaderBoardDescSort));
 
         // disable log
         this.#logger = logger;
@@ -83,7 +87,15 @@ export default class LeaderBoardController implements ILeaderBoardController {
         const thCurRaceValue = this.#raceId;
         try {
             const hero = parseStreamValue(data);
-            this.#pools.get(hero.heroRarity)!.set(hero.uniqueKey, hero);
+            if (hero.heroRarity >= 6) {
+                this.#logger.info(`[DEBUG] Received hero for rarity ${hero.heroRarity} (poolIndex: ${data.poolIndex})`);
+            }
+            const pool = this.#pools.get(hero.heroRarity);
+            if (!pool) {
+                this.#logger.error(`[DEBUG] No pool found for rarity ${hero.heroRarity}`);
+                return false;
+            }
+            pool.set(hero.uniqueKey, hero);
             return true;
         } catch (err) {
             this.#logger.error(`Error when updateNewData ${thCurRaceValue}`);

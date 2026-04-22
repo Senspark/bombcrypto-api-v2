@@ -7,7 +7,7 @@ A lightweight real-time leaderboard analytics server for **BombCrypto TH Mode**.
 ## Features
 
 - Real-time leaderboard updates via **Redis Streams** (or built-in mock data for UI development)
-- Six independent rarity pools: `Common` · `Rare` · `SuperRare` · `Epic` · `Legend` · `SuperLegend`
+- 10 independent rarity pools: `Common` · `Rare` · `SuperRare` · `Epic` · `Legend` · `SuperLegend` · `Mega` · `SuperMega` · `Mystic` · `SuperMystic`
 - Per-pool descending score sort with automatic race reset on new race ID
 - Referrer-based access control + per-IP rate limiting (5 req / 5 s) on the sync endpoint
 - Multi-stage **Docker** build for minimal production images
@@ -80,7 +80,7 @@ CLIENT_TH_MODE_PATH=https://your-client-domain.com
 
 ### Mock data mode
 
-Set `USE_MOCK_DATA=true` to run without Redis. The server will generate random hero race entries across all six rarity pools every `REFRESH_INTERVAL` ms, so the leaderboard fills up automatically for display testing.
+Set `USE_MOCK_DATA=true` to run without Redis. The server will generate random hero race entries across all 10 rarity pools every `REFRESH_INTERVAL` ms, so the leaderboard fills up automatically for display testing.
 
 ---
 

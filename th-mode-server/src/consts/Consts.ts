@@ -15,7 +15,11 @@ export enum HeroRarity {
     SuperRare,
     Epic,
     Legend,
-    SuperLegend
+    SuperLegend,
+    Mega,
+    SuperMega,
+    Mystic,
+    SuperMystic
 }
 
 export type HeroUniqueKey = string;

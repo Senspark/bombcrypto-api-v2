@@ -1,6 +1,6 @@
 networks:
   base_default:
-    external: true
+    driver: bridge
 
 name: bombcrypto
 services:
@@ -26,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: ap-th-server
     ports:
-      - "8106:80"
+      - "8108:80"
     networks:
       - base_default
     env_file:

@@ -7,7 +7,7 @@ A React-based single-page application that displays a **real-time leaderboard** 
 ## Features
 
 - **Live auto-refresh** – fetches leaderboard data every 5 s with a visual countdown; can be paused by the user.
-- **Rarity-grouped tables** – data is split into six rarity tiers (Common → Super Legend), each toggleable via individual switches.
+- **Rarity-grouped tables** – data is split into 10 rarity tiers (Common → Super Mystic), each toggleable via individual switches.
 - **Network filter** – filter heroes by blockchain network (BSC / Polygon).
 - **Hero details** – displays rank, username, hero ID (with network & type tooltip), BCOIN stake, SEN stake, ticket count, and score.
 - **Top-3 highlight** – first three ranks are visually distinguished.
@@ -96,11 +96,9 @@ The app expects the backend endpoint `GET /th/leaderboard` to return:
 }
 ```
 
-`groupedData` is a fixed-length array of 6 groups ordered by `HeroRarity` (Common=0 … SuperLegend=5).
+`groupedData` is a fixed-length array of 10 groups ordered by `HeroRarity` (Common=0 … SuperMystic=9).
 
 ---
 
 ## License
-This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
-
 

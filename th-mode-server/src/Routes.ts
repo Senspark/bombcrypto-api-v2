@@ -1,6 +1,7 @@
 import express, {Express, NextFunction, Request, Response, Router} from "express";
 import simpleHandlers from "./routers/SimpleHandlers";
 import LeaderBoardHandler from "./routers/LeaderBoardHandler";
+import cors from "cors";
 import bodyParser from "body-parser";
 import extendResponse from "./consts/ExpressExtension";
 import IEnvConfig from "./services/IEnvConfig";
@@ -8,6 +9,7 @@ import ILogger from "./services/ILogger";
 import {envConfig, logger} from "./Server";
 
 function setupStandardModules(app: Express, logger: ILogger, envConfig: IEnvConfig) {
+    app.use(cors()); // Enable CORS
     app.use(bodyParser.json({limit: '10kb'})); // Limit request bodies
     app.use(bodyParser.urlencoded({limit: '1kb', extended: true})); // Limit URL-encoded bodies
 

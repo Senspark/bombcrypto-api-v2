@@ -1,6 +1,6 @@
 const QUEUE_POOL_VISIBILITIES = 'queue-pool-visible';
 
-const POOL_VISIBILITIES_DEFAULT = new Array(6).fill(true);
+const POOL_VISIBILITIES_DEFAULT = new Array(10).fill(true);
 
 export class LocalStorage {
     private _queuePoolVisibilities: boolean[] | undefined = undefined;
@@ -29,7 +29,7 @@ export class LocalStorage {
                 const poolVisibilities = localStorage.getItem(QUEUE_POOL_VISIBILITIES);
                 if (poolVisibilities) {
                     this._queuePoolVisibilities = JSON.parse(poolVisibilities);
-                    if (this._queuePoolVisibilities?.length !== 6) {
+                    if (this._queuePoolVisibilities?.length !== 10) {
                         this._queuePoolVisibilities = POOL_VISIBILITIES_DEFAULT;
                     }
                 } else {
