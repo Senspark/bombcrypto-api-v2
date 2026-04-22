@@ -1,100 +1,76 @@
-# bombcrypto-api-v2
+# 💣 BombCrypto API v2 - Deep Scribe Edition
 
-Open-source monorepo for **BombCrypto** backend services and client applications.
+![Version](https://img.shields.io/badge/version-2.0.0--beta-blue.svg)
+![Status](https://img.shields.io/badge/status-active-green.svg)
+![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)
 
----
-
-## Packages
-
-### TH Mode — [treasure-mode.bombcrypto.io](https://treasure-mode.bombcrypto.io/)
-
-| Package | Description |
-|---|---|
-| [`th-mode-server`](th-mode-server/) | Leaderboard backend — consumes Redis Stream race events and exposes a REST API for the moderator client |
-| [`th-mode-client`](th-mode-client/) | Moderator client UI — React app that polls the server and renders live leaderboard rankings |
-
-### Shared Services
-
-| Package | Description |
-|---|---|
-| [`rpc-api`](rpc-api/) | Blockchain RPC proxy — routes BSC and Polygon RPC requests with CORS, rate limiting, and health checks. Used across multiple BombCrypto pages |
-| [`blockchain-center-api`](blockchain-center-api/) | EVM blockchain interaction hub — block numbers, contract calls, log fetching, transactions, and an RPC monitoring dashboard. Used across multiple BombCrypto pages |
+## 🎯 The "Why"
+This repository is the heart of the monitoring and automation infrastructure for the BombCrypto ecosystem. It was designed to be resilient, extensible, and easy to test, allowing developers to visualize the dynamic state of **Treasure Hunt** (TH) mode in real-time.
 
 ---
 
-## TH Mode Architecture
+## 🏗️ System Architecture
 
+The data flow is optimized for low latency, allowing for real-world data via Redis or simulations via Mock services.
+
+```mermaid
+sequenceDiagram
+    participant RM as Redis / Mock Service
+    participant TS as TH Mode Server (Port 8106)
+    participant TC as TH Mode Client (React)
+
+    Note over RM, TS: Data Flow
+    RM->>TS: Event Stream (Game Events)
+    TS->>TS: Process & Update State
+    
+    rect rgb(240, 240, 240)
+    Note right of TC: Browser Interaction
+    TC->>TS: GET /th/leaderboard
+    TS-->>TC: JSON Payload
+    end
+    
+    Note over TC: Render UI Charts
 ```
-Redis Stream (SV_TH_MODE_RACE)
-        │
-        ▼
- th-mode-server          ←── REST API ──→  th-mode-client
- (leaderboard engine)                      (moderator UI)
-```
-
-- The game backend publishes hero race events to a Redis Stream.
-- **th-mode-server** consumes those events, scores heroes per rarity pool, and caches the sorted leaderboard in memory.
-- **th-mode-client** periodically calls the server's `/th/leaderboard` endpoint to display live standings.
 
 ---
 
-## Quick Start
+## 🚀 Quick Start (Local Dev)
 
-Each package is self-contained. See the individual READMEs for full setup:
+To spin up the local environment with the professional configurations applied:
 
-- [th-mode-server/README.md](th-mode-server/README.md)
-- [rpc-api/README.md](rpc-api/README.md)
+### 1. Prerequisites
+- Docker & Docker Compose
+- Node.js v18+ (for local client)
 
-### th-mode-server
-
+### 2. Backend Configuration
+Simulation mode (Mock) is active by default in the `compose.yaml`:
 ```bash
-cd th-mode-server
-npm install
-cp .env.example .env   # fill in REDIS_CONNECTION_STRING (or set USE_MOCK_DATA=true)
-npm start
+docker compose up -d
 ```
+> [!NOTE]
+> CORS is enabled (`*`) in development mode to allow the React frontend to access the API freely.
 
-### th-mode-client
-
+### 3. Frontend Execution
+Navigate to the client folder and start Vite:
 ```bash
 cd th-mode-client
 npm install
 npm start
 ```
 
-### rpc-api
-
-```bash
-cd rpc-api
-npm install
-cp .env.example .env
-npm start
-```
-
-### blockchain-center-api
-
-```bash
-cd blockchain-center-api
-cp rpc.config.example.json rpc.config.json   # fill in your RPC endpoints
-npm install
-node server.js
-```
+The dashboard will be available at `http://localhost:5173`.
 
 ---
 
-## Development — Mock Data Mode
-
-To run the TH Mode UI locally **without a Redis instance**, start `th-mode-server` with mock data enabled:
-
-```env
-# th-mode-server/.env
-USE_MOCK_DATA=true
-```
-
-The server will generate synthetic hero race events across all six rarity pools (`Common` → `SuperLegend`) on every refresh interval, so `th-mode-client` can be developed and tested against a live leaderboard with no external dependencies.
+## 📚 Additional Documentation
+- [**SYSTEM_ATLAS.md**](./SYSTEM_ATLAS.md): Detailed technical inventory of endpoints and environment variables.
+- [**rpc-api/README.md**](./rpc-api/README.md): Details about the RPC interface.
+- [**th-mode-server/README.md**](./th-mode-server/README.md): Server development logs.
 
 ---
 
-## License
+> [!IMPORTANT]
+> **Production Security:** Remember to configure `ALLOWED_ORIGIN` in the `th-mode-server` and disable `USE_MOCK_DATA` before deploying to public environments.
 
-Licensed under the [GNU Affero General Public License v3.0](LICENSE).
+---
+*Precisely generated by Deep Scribe ✍️*
