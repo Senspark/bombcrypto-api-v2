@@ -9,6 +9,8 @@ import { handleCallContract } from "./handlers/callContract.js";
 import { handleAnalytics } from "./handlers/analytics.js";
 import { handleToggleRpcPause } from "./handlers/rpcControl.js";
 import { handleGetBlockTimestamp } from "./handlers/blockTimestamp.js";
+import { handleSuggestFee } from "./handlers/fee.js";
+import { handleMulticall } from "./handlers/multicall.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +56,8 @@ app.post("/getTransaction", handleGetTransaction);
 app.post("/getTransactionReceipt", handleGetTransactionReceipt);
 app.post("/getTransactionCount", handleGetTransactionCount);
 app.post("/getBlockTimestamp", handleGetBlockTimestamp);
+app.post("/suggestFee", handleSuggestFee);
+app.post("/multicall", handleMulticall);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

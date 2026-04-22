@@ -27,13 +27,23 @@ function validateBlockTimestampRequest(body) {
   return null;
 }
 
-async function executeGetBlockTimestamp(rpcManager, blockNumber) {
+const timestampCache = new Map();
+
+function getTimestampKey(network, blockNumber) {
+  return `${network}:${blockNumber}`;
+}
+
+async function executeGetBlockTimestamp(rpcManager, blockNumber, normalizedNetwork) {
+  const cacheKey = getTimestampKey(normalizedNetwork, blockNumber);
+  if (timestampCache.has(cacheKey)) {
+    return { success: true, timestamp: timestampCache.get(cacheKey) };
+  }
+
   const maxRetries = rpcManager.getRpcCount();
   let lastError = null;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const rpcUrl = await rpcManager.getNextRpc();
-    // console.log(`Attempt ${attempt + 1}/${maxRetries}: Using RPC ${rpcUrl}`);
 
     try {
       const block = await withProvider(rpcUrl, async (provider) => {
@@ -48,6 +58,14 @@ async function executeGetBlockTimestamp(rpcManager, blockNumber) {
       }
 
       rpcManager.reportSuccess(rpcUrl);
+      timestampCache.set(cacheKey, block.timestamp);
+      
+      // Limit cache size to prevent memory leaks (keep last 5000 blocks)
+      if (timestampCache.size > 5000) {
+          const firstKey = timestampCache.keys().next().value;
+          timestampCache.delete(firstKey);
+      }
+
       return { success: true, timestamp: block.timestamp };
     } catch (error) {
       lastError = error;
@@ -75,7 +93,7 @@ async function handleGetBlockTimestamp(req, res) {
 
   try {
     const rpcManager = getRpcManagerGeneral(normalizedNetwork);
-    const result = await executeGetBlockTimestamp(rpcManager, blockNumber);
+    const result = await executeGetBlockTimestamp(rpcManager, blockNumber, normalizedNetwork);
 
     if (result.success) {
       return res.json({

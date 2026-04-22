@@ -1,6 +1,7 @@
 import { JsonRpcProvider } from "ethers";
 import { RpcManager, RPC_URLS_SUPPORT_GET_LOGS, RPC_URLS_GENERAL_USE } from "../lib/rpcManager.js";
 import { BlockNumberManager } from "../lib/blockNumberManager.js";
+import { providerPool } from "../lib/providerPool.js";
 
 const REQUEST_TIMEOUT_MS = 20000;
 
@@ -49,11 +50,16 @@ async function fetchWithTimeout(promise, timeoutMs) {
 }
 
 async function withProvider(rpcUrl, callback) {
-  const provider = new JsonRpcProvider(rpcUrl);
+  const provider = providerPool.getProvider(rpcUrl);
   try {
     return await callback(provider);
-  } finally {
-    provider.destroy();
+  } catch (error) {
+    // If we hit a severe connection issue, clear the provider from the pool
+    const statusCode = extractStatusCode(error);
+    if (statusCode === 500 || statusCode === 0) {
+      providerPool.deleteProvider(rpcUrl);
+    }
+    throw error;
   }
 }
 
