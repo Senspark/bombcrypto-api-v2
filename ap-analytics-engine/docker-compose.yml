@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bombstats_postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-root}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dbsenha}
+      POSTGRES_DB: ${DB_NAME:-dbname}
+    ports:
+      - "${DB_PORT:-3306}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - base_default
+
+  redis:
+    image: redis:7-alpine
+    container_name: bombstats_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+    networks:
+      - base_default
+
+networks:
+  base_default:
+    external: true
+
+volumes:
+  postgres_data:
+  redis_data:

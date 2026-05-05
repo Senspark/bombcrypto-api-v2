@@ -50,4 +50,18 @@ services:
     environment:
       TZ: 'Asia/Bangkok'
 
-  
+  ap-analytics-engine:
+    build:
+      context: ./ap-analytics-engine
+      dockerfile: Dockerfile
+    container_name: ap-analytics-engine
+    ports:
+      - "8108:3000"
+    networks:
+      - base_default
+    env_file:
+      - ./ap-analytics-engine/.env
+    environment:
+      TZ: 'Asia/Bangkok'
+      DB_HOST: bombstats_postgres
+      REDIS_HOST: bombstats_redis

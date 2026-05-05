@@ -14,12 +14,27 @@ export default defineConfig(({ mode }) => {
     server: {
       open: false,
       proxy: {
+        '/api/th/leaderboard': {
+          target: 'http://localhost:8108',
+          changeOrigin: true,
+          // No rewrite needed because the backend now has /api prefix
+        },
         '/api': {
           target: `http://localhost:${apiPort}`,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
+        '/analytics-api': {
+          target: 'http://localhost:8108',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/analytics-api/, '/api'),
+        },
       },
+    },
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./vitest.setup.ts'],
+      globals: true,
     },
   };
 });

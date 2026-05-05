@@ -1,0 +1,6 @@
+node_modules
+dist
+*.bak
+src/blockchain.bak
+src/workers.bak
+src/bull.module.ts.bak

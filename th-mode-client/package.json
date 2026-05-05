@@ -21,10 +21,15 @@
     "build": "vite build",
     "build:test": "vite build --mode test",
     "build:prod": "vite build --mode prod",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.19"
+    "jsdom": "^29.1.1",
+    "vite": "^5.4.19",
+    "vitest": "^4.1.5"
   }
 }
