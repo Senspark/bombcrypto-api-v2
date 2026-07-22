@@ -7,11 +7,13 @@ import IMessengerService from "./services/IMessengerService";
 import MessengerService from "./services-impl/MessengerService";
 import FakeMessengerService from "./services-impl/FakeMessengerService";
 import ConsoleLogger from "./services-impl/loggers/ConsoleLogger";
+import RealtimeIndex from "./services-impl/RealtimeIndex";
 
 export default class Dependencies implements IDependencies {
     envConfig: IEnvConfig;
     logger: ILogger;
     messenger: IMessengerService;
+    realtimeIndex: RealtimeIndex;
 
     constructor(options?: IOptions) {
         this.envConfig = options?.envConfig ?? new EnvConfig();
@@ -20,6 +22,7 @@ export default class Dependencies implements IDependencies {
         this.messenger = this.envConfig.useMockData
             ? new FakeMessengerService(this.logger, this.envConfig)
             : new MessengerService(this.logger, this.envConfig);
+        this.realtimeIndex = new RealtimeIndex();
     }
 
     isProduction(): boolean {

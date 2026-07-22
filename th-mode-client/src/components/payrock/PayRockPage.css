@@ -1,0 +1,401 @@
+.payrock-container {
+    padding: 20px;
+    background-color: #0f1216;
+    min-height: 100vh;
+    color: #e6e9ef;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.payrock-container .ant-typography {
+    color: #e6e9ef;
+}
+
+.payrock-container .ant-typography.ant-typography-secondary,
+.payrock-container .ant-typography-secondary {
+    color: #c7d0db !important;
+}
+
+.payrock-title-container {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.payrock-title.ant-typography {
+    font-size: 2.2rem !important;
+    font-weight: 700 !important;
+    color: #91caff !important;
+    margin-bottom: 4px !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 12px rgba(145, 202, 255, 0.25);
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.payrock-title-icon {
+    width: 36px;
+    height: 36px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 2px 6px rgba(64, 169, 255, 0.45));
+}
+
+.payrock-title-suffix {
+    color: #c7d0db;
+    font-size: 0.75em;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+}
+
+.payrock-card-icon {
+    width: 20px;
+    height: 20px;
+    image-rendering: pixelated;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+.payrock-subtitle {
+    display: block;
+    max-width: 640px;
+    margin: 0 auto;
+    font-size: 0.95rem;
+}
+
+/* ----------- Card chrome (helper / input / preview / result) ----------- */
+.payrock-helper-card.ant-card,
+.payrock-input-card.ant-card,
+.payrock-preview-card.ant-card,
+.payrock-result-card.ant-card {
+    background-color: #141a20 !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    margin-top: 20px;
+}
+
+.payrock-helper-card .ant-card-body,
+.payrock-input-card .ant-card-body,
+.payrock-preview-card .ant-card-body,
+.payrock-result-card .ant-card-body {
+    background-color: #141a20;
+    border-radius: 12px;
+}
+
+.payrock-helper-card .ant-card-head,
+.payrock-input-card .ant-card-head,
+.payrock-preview-card .ant-card-head,
+.payrock-result-card .ant-card-head {
+    background-color: #1a1f24;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: #eef3ff;
+    border-radius: 12px 12px 0 0;
+}
+
+.payrock-helper-card .ant-card-head-title,
+.payrock-input-card .ant-card-head-title,
+.payrock-preview-card .ant-card-head-title,
+.payrock-result-card .ant-card-head-title {
+    color: #eef3ff;
+    font-weight: 600;
+}
+
+.payrock-helper-card .ant-card-head {
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+.payrock-helper-desc {
+    display: block;
+}
+
+/* Default (non-primary) button — for helper "Open scan filter" */
+.payrock-container .ant-btn-default {
+    background-color: #1a1f24 !important;
+    color: #91caff !important;
+    border-color: rgba(64, 169, 255, 0.35) !important;
+}
+
+.payrock-container .ant-btn-default:hover {
+    background-color: #1f262d !important;
+    color: #c5e0ff !important;
+    border-color: rgba(64, 169, 255, 0.6) !important;
+}
+
+/* ----------- Input row ----------- */
+.payrock-input-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.payrock-input-row > .ant-input { flex: 2 1 320px; }
+.payrock-input-row > .ant-select { flex: 0 1 160px; }
+.payrock-input-row > .ant-btn { flex: 0 0 auto; }
+
+.payrock-container .ant-input,
+.payrock-container .ant-input-affix-wrapper {
+    background-color: #1a1f24 !important;
+    color: #e6e9ef !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.payrock-container .ant-input::placeholder,
+.payrock-container .ant-input-affix-wrapper input::placeholder {
+    color: #5a6470 !important;
+}
+
+.payrock-container .ant-input:hover,
+.payrock-container .ant-input-affix-wrapper:hover {
+    border-color: rgba(64, 169, 255, 0.5) !important;
+}
+
+.payrock-container .ant-input:focus,
+.payrock-container .ant-input-affix-wrapper-focused {
+    border-color: #40a9ff !important;
+    box-shadow: 0 0 0 2px rgba(64, 169, 255, 0.15) !important;
+}
+
+/* Radio.Group */
+.payrock-container .ant-radio-button-wrapper {
+    background-color: #1a1f24 !important;
+    color: #c7d0db !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.payrock-container .ant-radio-button-wrapper:hover {
+    color: #91caff !important;
+}
+
+.payrock-container .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background-color: #177ddc !important;
+    color: #fff !important;
+    border-color: #177ddc !important;
+}
+
+.payrock-container .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
+    background-color: #177ddc !important;
+}
+
+/* Select */
+.payrock-container .ant-select-selector {
+    background-color: #1a1f24 !important;
+    color: #e6e9ef !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.payrock-container .ant-select-selection-item,
+.payrock-container .ant-select-selection-search-input {
+    color: #e6e9ef !important;
+}
+
+.payrock-container .ant-select-selection-placeholder {
+    color: #5a6470 !important;
+}
+
+.payrock-container .ant-select-arrow {
+    color: #c7d0db !important;
+}
+
+.payrock-container .ant-select:hover .ant-select-selector {
+    border-color: rgba(64, 169, 255, 0.5) !important;
+}
+
+.payrock-container .ant-select-focused .ant-select-selector {
+    border-color: #40a9ff !important;
+    box-shadow: 0 0 0 2px rgba(64, 169, 255, 0.15) !important;
+}
+
+/* Primary button = cyan/blue (matches quartz icon) */
+.payrock-container .ant-btn-primary:not(.ant-btn-dangerous) {
+    background-color: #177ddc;
+    border-color: #177ddc;
+}
+
+.payrock-container .ant-btn-primary:not(.ant-btn-dangerous):hover {
+    background-color: #40a9ff !important;
+    border-color: #40a9ff !important;
+}
+
+/* Danger primary = repay action (destructive write) */
+.payrock-container .ant-btn-primary.ant-btn-dangerous {
+    background-color: #d4380d;
+    border-color: #d4380d;
+}
+
+.payrock-container .ant-btn-primary.ant-btn-dangerous:hover {
+    background-color: #ff4d4f !important;
+    border-color: #ff4d4f !important;
+}
+
+/* ----------- Preview Descriptions + ROCK delta block ----------- */
+.payrock-desc.ant-descriptions .ant-descriptions-item-label {
+    color: #8c96a6 !important;
+    font-size: 0.85rem;
+}
+
+.payrock-desc.ant-descriptions .ant-descriptions-item-content {
+    color: #e6e9ef !important;
+}
+
+.payrock-rock-delta {
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(64, 169, 255, 0.10), rgba(82, 196, 26, 0.08));
+    border: 1px solid rgba(82, 196, 26, 0.25);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+.payrock-rock-delta-amount {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #b7eb8f;
+    text-shadow: 0 1px 6px rgba(82, 196, 26, 0.35);
+}
+
+.payrock-rock-delta-amount span {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #8c96a6;
+    margin-left: 4px;
+    letter-spacing: 0.05em;
+}
+
+.payrock-rock-delta-row {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 1.05rem;
+}
+
+.payrock-rock-label {
+    color: #8c96a6;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.payrock-rock-before {
+    color: #c7d0db;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.payrock-rock-arrow {
+    color: #5a6470;
+    font-size: 1rem;
+}
+
+.payrock-rock-after {
+    color: #91caff;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 6px rgba(64, 169, 255, 0.35);
+}
+
+.payrock-rock-delta-row--result {
+    background-color: rgba(20, 26, 40, 0.6);
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ----------- Confirm row ----------- */
+.payrock-confirm-row {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.payrock-tx-cell {
+    font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, monospace;
+    font-size: 0.85rem;
+    color: #69b1ff;
+}
+
+/* ----------- Table (mirror watch-table) ----------- */
+.payrock-table .ant-table {
+    background-color: transparent;
+    color: #e6e9ef;
+}
+
+.payrock-table .ant-table-thead > tr > th {
+    background-color: #1f262d !important;
+    color: #c7d0db !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    font-weight: 600;
+}
+
+.payrock-table .ant-table-tbody > tr > td {
+    background-color: transparent !important;
+    color: #e6e9ef !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+.payrock-table .ant-table-tbody > tr:hover > td {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.payrock-table .ant-empty-description,
+.payrock-table .ant-table-placeholder .ant-empty-description {
+    color: #c7d0db !important;
+}
+
+/* ----------- Alert dark variants ----------- */
+.payrock-container .ant-alert {
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.payrock-container .ant-alert-error {
+    background-color: rgba(255, 77, 79, 0.12) !important;
+    border-color: rgba(255, 77, 79, 0.35) !important;
+}
+
+.payrock-container .ant-alert-error .ant-alert-message,
+.payrock-container .ant-alert-error .ant-alert-description {
+    color: #ff9c9c !important;
+}
+
+.payrock-container .ant-alert-warning {
+    background-color: rgba(255, 169, 64, 0.12) !important;
+    border-color: rgba(255, 169, 64, 0.35) !important;
+}
+
+.payrock-container .ant-alert-warning .ant-alert-message,
+.payrock-container .ant-alert-warning .ant-alert-description {
+    color: #ffc97a !important;
+}
+
+.payrock-container .ant-alert-info {
+    background-color: rgba(64, 169, 255, 0.10) !important;
+    border-color: rgba(64, 169, 255, 0.30) !important;
+}
+
+.payrock-container .ant-alert-info .ant-alert-message,
+.payrock-container .ant-alert-info .ant-alert-description {
+    color: #91caff !important;
+}
+
+/* ----------- Empty state contrast ----------- */
+.payrock-container .ant-empty-img-simple-path { fill: #2a3139; }
+.payrock-container .ant-empty-img-simple-ellipse { fill: #1a1f24; }
+.payrock-container .ant-empty-img-simple-g { stroke: #3c4654; }
+
+/* ----------- Result card extras ----------- */
+.payrock-container code,
+.payrock-container .ant-typography code {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    color: #91caff !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 4px;
+    padding: 1px 6px;
+}
+

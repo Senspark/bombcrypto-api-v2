@@ -3,6 +3,7 @@ export default interface IEnvConfig {
     isProduction: boolean;
     refreshIntervalMs: number;
     redisConnectionString: string;
+    databaseUrl: string;
     useMockData: boolean;
 
     clientThModePath: string;

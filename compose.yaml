@@ -49,5 +49,50 @@ services:
       - base_default
     environment:
       TZ: 'Asia/Bangkok'
+      REDIS_CONNECTION_STRING: 'redis://@redis:6379/0'
 
-  
+  ap-share-on-x:
+    build:
+      context: ./share-on-x
+      dockerfile: Dockerfile
+    container_name: ap-share-on-x
+    ports:
+      - "8108:80"
+    networks:
+      - base_default
+    env_file:
+      - ./share-on-x/.env
+    environment:
+      TZ: 'Asia/Bangkok'
+      PORT: 80
+      REDIS_CONNECTION_STRING: 'redis://@redis:6379/0'
+      IMAGE_DIR: '/app/share-assets'
+    # Bind-mount the image dir to the SAME host path nginx serves /share-img/ from
+    # (plan §6/§7). Uncomment and set the host path at deploy:
+    # volumes:
+    #   - /host/path/share-assets:/app/share-assets
+    
+  # DEV-ONLY, TESTNET-ONLY. The editor-chain-proxy takes a throwaway private key
+  # per request and sends arbitrary tx — it must NEVER be exposed off the dev
+  # machine. Two guardrails keep it local: (1) the port is published to the host
+  # loopback ONLY (127.0.0.1); (2) the code rejects any RPC whose real chainId is
+  # not a whitelisted testnet (97 bsctestnet, 80002 amoy). Do not deploy this to a
+  # shared/production host.
+  ap-editor-chain-proxy:
+    build:
+      context: ./editor-chain-proxy
+      dockerfile: Dockerfile
+    container_name: ap-editor-chain-proxy
+    ports:
+      - "127.0.0.1:8555:8555"
+    networks:
+      - base_default
+    env_file:
+      - path: ./editor-chain-proxy/.env
+        required: false
+    environment:
+      TZ: 'Asia/Bangkok'
+      PORT: 8555
+      # Bind all interfaces INSIDE the container so the forwarded port reaches the
+      # process; host exposure is still loopback-only via the ports mapping above.
+      HOST: '0.0.0.0'

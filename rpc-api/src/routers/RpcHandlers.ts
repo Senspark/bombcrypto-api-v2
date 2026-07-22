@@ -1,7 +1,7 @@
 import {Request, Response} from "express";
 import * as fs from "fs";
 import * as path from "path";
-import {ILogger} from "../Services";
+import {IEnvConfig, ILogger} from "../Services";
 
 type RpcType = "bsc" | "polygon";
 
@@ -12,21 +12,24 @@ class RpcHandlers {
     };
 
     private logger: ILogger;
+    private envConfig: IEnvConfig;
 
-    constructor(logger: ILogger) {
+    constructor(logger: ILogger, envConfig: IEnvConfig) {
         this.logger = logger.clone('[RpcHandlers]');
+        this.envConfig = envConfig;
     }
 
     init(): void {
+        const variant = this.envConfig.isProduction ? 'mainnet' : 'testnet';
         try {
             this.rpcCache.bsc = this.loadRpcFile("bsc");
-            this.logger.info("------------------ Loaded bsc RPC endpoints: ------------------");
+            this.logger.info(`------------------ Loaded bsc ${variant} RPC endpoints: ------------------`);
             this.rpcCache.bsc.forEach((endpoint, idx) => {
                 this.logger.info(`[bsc RPC #${idx + 1}] ${endpoint}`);
             });
 
             this.rpcCache.polygon = this.loadRpcFile("polygon");
-            this.logger.info("------------------ Loaded polygon RPC endpoints: ------------------");
+            this.logger.info(`------------------ Loaded polygon ${variant} RPC endpoints: ------------------`);
             this.rpcCache.polygon.forEach((endpoint, idx) => {
                 this.logger.info(`[polygon RPC #${idx + 1}] ${endpoint}`);
             });
@@ -36,7 +39,8 @@ class RpcHandlers {
     }
 
     private loadRpcFile(type: RpcType): string[] {
-        const fileName = type === "bsc" ? "bsc_rpc.txt" : "polygon_rpc.txt";
+        const suffix = this.envConfig.isProduction ? '_rpc.txt' : '_testnet_rpc.txt';
+        const fileName = `${type}${suffix}`;
         const filePath = path.resolve("./data", fileName);
         this.logger.info(`[RpcHandlers] init filePath: ${filePath}`);
         const content = fs.readFileSync(filePath, "utf-8");

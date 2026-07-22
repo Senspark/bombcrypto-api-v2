@@ -18,15 +18,23 @@ const RARITY_MAP = [
     HeroRarity.Epic,        // 3
     HeroRarity.Legend,      // 4
     HeroRarity.SuperLegend, // 5
+    HeroRarity.Mega,        // 6
+    HeroRarity.SuperMega,   // 7
+    HeroRarity.Mystic,      // 8
+    HeroRarity.SuperMystic, // 9
 ];
 
 const MIN_STAKE_BY_RARITY = [
-    60,   // Common
-    486,  // Rare
-    971,  // SuperRare
-    1942, // Epic
-    4854, // Legend
-    9709, // SuperLegend
+    60,    // Common
+    194,   // Rare
+    388,   // SuperRare
+    777,   // Epic
+    1942,  // Legend
+    3883,  // SuperLegend
+    7766,  // Mega
+    19415, // SuperMega
+    38830, // Mystic
+    77660, // SuperMystic
 ];
 
 const MIN_STAKE_SCORE = 0.1;

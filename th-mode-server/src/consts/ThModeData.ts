@@ -1,5 +1,6 @@
 interface IDataThMode {
     raceId: number;
+    uid: number;
     userName?: string;
     heroId: number;
     stakeBcoin: number;

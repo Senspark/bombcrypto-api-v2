@@ -2,6 +2,7 @@ import React from 'react';
 import './PoolTable.css';
 import {Col, Row, Table, Tag, Tooltip} from 'antd';
 import type {ColumnType} from 'antd/es/table';
+import {EyeOutlined} from '@ant-design/icons';
 import {
     COLOR_STYLES,
     HERO_TYPE_TO_STR,
@@ -36,12 +37,27 @@ const POOL_COLUMNS: ColumnType<IHeroInfo>[] = [
         dataIndex: 'userName',
         key: 'userName',
         className: 'column-user',
-        render: (userName: string | undefined, record: IHeroInfo) => {
-            const displayName = (userName || "Unknown").slice(0, 42);
+        render: (userName: string | undefined) => {
+            const displayName = (userName || 'Unknown').slice(0, 42);
+            const watchable = !!userName && userName.toLowerCase() !== 'unknown';
+            if (!watchable) {
+                return <span className="user-watch-link user-watch-link--disabled">{displayName}</span>;
+            }
+            const wallet = userName!.trim().toLowerCase();
             return (
-                <span>{displayName}</span>
+                <Tooltip title="Watch this wallet (opens in new tab)">
+                    <a
+                        href={`/watch/${encodeURIComponent(wallet)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="user-watch-link"
+                    >
+                        <EyeOutlined className="user-watch-icon"/>
+                        <span>{displayName}</span>
+                    </a>
+                </Tooltip>
             );
-        }
+        },
     },
     {
         title: 'Hero Id',
@@ -102,21 +118,22 @@ const POOL_COLUMNS: ColumnType<IHeroInfo>[] = [
     }
 ];
 
-const EachPoolTable = (
-    data: IHeroInfo[],
-    rarity: HeroRarity,
-    isVisible: boolean,
-    networkFilter: Network | undefined,
-    showNetworkRowColor: boolean
-) => {
+interface IEachPoolTableProps {
+    data: IHeroInfo[];
+    rarity: HeroRarity;
+    isVisible: boolean;
+    networkFilter: Network | undefined;
+    showNetworkRowColor: boolean;
+    columns: ColumnType<IHeroInfo>[];
+}
+
+const EachPoolTable: React.FC<IEachPoolTableProps> = ({data, rarity, isVisible, networkFilter, showNetworkRowColor, columns}) => {
     if (!isVisible) return null;
 
-    // Filter heroes by network if a network filter is applied
     const filteredData = networkFilter !== undefined
         ? data.filter(hero => hero.network === networkFilter)
         : data;
 
-    // Count visible heroes after filtering
     const visibleHeroCount = filteredData.length;
 
     return (
@@ -135,7 +152,7 @@ const EachPoolTable = (
                 </div>
                 <Table
                     dataSource={filteredData}
-                    columns={POOL_COLUMNS}
+                    columns={columns}
                     size='small'
                     tableLayout='auto'
                     rowKey={'heroId'}
@@ -153,12 +170,20 @@ const EachPoolTable = (
     );
 };
 
-const GroupedPoolTable = (data: IGroupedPoolData) => {
+const GroupedPoolTable: React.FC<IGroupedPoolData> = (data) => {
     return (
         <Row gutter={[16, 16]} className="pools-section">
-            {data.groupedData.map((poolData, idx) =>
-                EachPoolTable(poolData, idx, data.tablesVisible[idx], data.networkFilter, data.showNetworkRowColor)
-            )}
+            {data.groupedData.map((poolData, idx) => (
+                <EachPoolTable
+                    key={idx}
+                    data={poolData}
+                    rarity={idx}
+                    isVisible={data.tablesVisible[idx]}
+                    networkFilter={data.networkFilter}
+                    showNetworkRowColor={data.showNetworkRowColor}
+                    columns={POOL_COLUMNS}
+                />
+            ))}
         </Row>
     );
 }

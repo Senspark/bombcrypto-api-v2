@@ -1,6 +1,7 @@
-import { JsonRpcProvider } from "ethers";
+import { JsonRpcProvider, FetchRequest } from "ethers";
 import { RpcManager, RPC_URLS_SUPPORT_GET_LOGS, RPC_URLS_GENERAL_USE } from "../lib/rpcManager.js";
 import { BlockNumberManager } from "../lib/blockNumberManager.js";
+import { nextEgress } from "../lib/egress.js";
 
 const REQUEST_TIMEOUT_MS = 20000;
 
@@ -49,7 +50,17 @@ async function fetchWithTimeout(promise, timeoutMs) {
 }
 
 async function withProvider(rpcUrl, callback) {
-  const provider = new JsonRpcProvider(rpcUrl);
+  // Pick an egress (proxy) per call and route the provider's HTTP through it.
+  // Without proxies configured, egress.agent is null => direct connection.
+  const egress = nextEgress();
+  let provider;
+  if (egress.agent) {
+    const req = new FetchRequest(rpcUrl);
+    req.getUrlFunc = FetchRequest.createGetUrlFunc({ agent: egress.agent });
+    provider = new JsonRpcProvider(req);
+  } else {
+    provider = new JsonRpcProvider(rpcUrl);
+  }
   try {
     return await callback(provider);
   } finally {
@@ -78,19 +89,26 @@ function extractStatusCode(error) {
   return 0; // Unknown
 }
 
-// Initialize managers for all networks at module load (so /web shows RPCs immediately)
-const allNetworks = new Set([
-  ...Object.keys(RPC_URLS_SUPPORT_GET_LOGS),
-  ...Object.keys(RPC_URLS_GENERAL_USE),
-]);
-for (const network of allNetworks) {
-  getRpcManagerForLogs(network);
-  getRpcManagerGeneral(network);
+// Networks with at least one configured RPC. Populated by buildAllManagers()
+// after the RPC config has been loaded (from Redis or the config file).
+const allNetworks = new Set();
+
+// Build managers for every configured network so /web shows RPCs immediately.
+// Called once at startup, after initRpcConfig().
+function buildAllManagers() {
+  allNetworks.clear();
+  for (const network of Object.keys(RPC_URLS_SUPPORT_GET_LOGS)) allNetworks.add(network);
+  for (const network of Object.keys(RPC_URLS_GENERAL_USE)) allNetworks.add(network);
+  for (const network of allNetworks) {
+    getRpcManagerForLogs(network);
+    getRpcManagerGeneral(network);
+  }
 }
 
 export {
   REQUEST_TIMEOUT_MS,
   allNetworks,
+  buildAllManagers,
   rpcManagersForLogs,
   rpcManagersGeneral,
   getRpcManagerForLogs,

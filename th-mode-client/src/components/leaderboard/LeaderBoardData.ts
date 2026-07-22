@@ -15,7 +15,11 @@ export enum HeroRarity {
     SuperRare,
     Epic,
     Legend,
-    SuperLegend
+    SuperLegend,
+    Mega,
+    SuperMega,
+    Mystic,
+    SuperMystic
 }
 
 export type HeroUniqueKey = string;
@@ -39,7 +43,16 @@ export interface IHeroInfo {
     score: number;
 }
 
+export interface IRewardPoolInfo {
+    poolId: number;
+    bcoinRemaining: number;
+    bcoinMax: number;
+    senRemaining: number;
+    senMax: number;
+}
+
 export interface IFetchedData {
     raceId: number,
-    groupedData: Array<IHeroInfo[]>
+    groupedData: Array<IHeroInfo[]>,
+    rewardPools?: IRewardPoolInfo[]
 }

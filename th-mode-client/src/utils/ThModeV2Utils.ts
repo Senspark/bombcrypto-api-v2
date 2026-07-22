@@ -6,7 +6,11 @@ export const COLOR_STYLES: React.CSSProperties[] = [
     {background: '#168eee'},
     {background: '#ef0fef'},
     {background: '#e1c653'},
-    {background: '#ed5757'}
+    {background: '#ed5757'},
+    {background: '#35a0d0'},
+    {background: '#076bd4'},
+    {background: '#6b6de6'},
+    {background: '#c8568e'}
 ];
 
 export const RARITY_TO_STR: string[] = [
@@ -15,16 +19,11 @@ export const RARITY_TO_STR: string[] = [
     'Super Rare',
     'Epic',
     'Legend',
-    'Super Legend'
-];
-
-export const RARITY_CSS_COLORS: string[] = [
-    'white-header',
-    'green-header',
-    'blue-header',
-    'purple-header',
-    'yellow-header',
-    'red-header'
+    'Super Legend',
+    'Mega',
+    'Super Mega',
+    'Mystic',
+    'Super Mystic'
 ];
 
 export const HERO_TYPE_TO_STR: string[] = [

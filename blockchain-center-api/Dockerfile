@@ -13,6 +13,7 @@ COPY *.js ./
 COPY lib/ ./lib/
 COPY utils/ ./utils/
 COPY handlers/ ./handlers/
+COPY consts/ ./consts/
 COPY web/ ./web/
 COPY rpc.config.json ./
 
