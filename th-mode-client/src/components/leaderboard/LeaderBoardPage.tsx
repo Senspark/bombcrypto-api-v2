@@ -1,14 +1,16 @@
 import React, {useEffect, useRef, useState} from 'react';
 import './LeaderBoardPage.css';
 import GroupedPoolTable from "./PoolTable";
+import RewardPoolPanel from "./RewardPoolPanel";
 import {IFetchedData, Network} from "./LeaderBoardData";
 import AutoRefreshToggle from "./AutoRefreshToggle";
 import LeaderBoardFetcher from "./LeaderBoardFetcher";
-import {Card, Col, Progress, Row, Select, Space, Switch, Typography} from 'antd';
+import {Button, Card, Col, Drawer, Progress, Row, Select, Space, Switch, Typography} from 'antd';
 import {COLOR_STYLES, NETWORK_TO_STR_DROPDOWN, RARITY_TO_STR} from "../../utils/ThModeV2Utils";
 import {useStorage} from "../../contexts/LocalStorageContext";
 import {motion} from 'framer-motion';
 import {
+    BankOutlined,
     ClockCircleOutlined,
     CrownOutlined,
     EyeInvisibleOutlined,
@@ -38,6 +40,7 @@ const LeaderBoardPage = () => {
     const [tableVisible, setTableVisible] = useState<boolean[]>(localStorage.getQueuePoolVisibilities());
     const [networkFilter, setNetworkFilter] = useState<Network | undefined>(undefined);
     const [showNetworkRowColor] = useState<boolean>(false);
+    const [rewardPoolsOpen, setRewardPoolsOpen] = useState(false);
 
     const onDataFetched = (data: IFetchedData) => setData(data);
     const onTimeCountDown = (timeLeft: number) => setTimeCountDown(timeLeft);
@@ -196,29 +199,38 @@ const LeaderBoardPage = () => {
                         </div>
                     </Col>
                     <Col style={{display: 'flex', justifyContent: 'flex-end'}}>
-                        <Select
-                            value={networkFilter === undefined ? "all" : networkFilter}
-                            onChange={(value) => handleNetworkFilterChange(value === "all" ? null : value as Network)}
-                            style={{width: 160}}
-                            className="network-filter-select"
-                            dropdownStyle={{borderRadius: '8px'}}
-                            suffixIcon={<GlobalOutlined style={{color: '#1890ff'}}/>}
-                        >
-                            <Option key="all" value="all">
-                                <Space>
-                                    <GlobalOutlined style={{color: '#1890ff'}}/>
-                                    <span>All networks</span>
-                                </Space>
-                            </Option>
-                            {Object.entries(NETWORK_TO_STR_DROPDOWN).map(([key, value]) => (
-                                <Option key={key} value={parseInt(key)}>
+                        <Space>
+                            <Select
+                                value={networkFilter === undefined ? "all" : networkFilter}
+                                onChange={(value) => handleNetworkFilterChange(value === "all" ? null : value as Network)}
+                                style={{width: 160}}
+                                className="network-filter-select"
+                                dropdownStyle={{borderRadius: '8px'}}
+                                suffixIcon={<GlobalOutlined style={{color: '#1890ff'}}/>}
+                            >
+                                <Option key="all" value="all">
                                     <Space>
-                                        <GlobalOutlined style={{color: value === 'Bsc' ? '#f0b90b' : '#8247e5'}}/>
-                                        <span>{value}</span>
+                                        <GlobalOutlined style={{color: '#1890ff'}}/>
+                                        <span>All networks</span>
                                     </Space>
                                 </Option>
-                            ))}
-                        </Select>
+                                {Object.entries(NETWORK_TO_STR_DROPDOWN).map(([key, value]) => (
+                                    <Option key={key} value={parseInt(key)}>
+                                        <Space>
+                                            <GlobalOutlined style={{color: value === 'Bsc' ? '#f0b90b' : '#8247e5'}}/>
+                                            <span>{value}</span>
+                                        </Space>
+                                    </Option>
+                                ))}
+                            </Select>
+                            <Button
+                                type="primary"
+                                icon={<BankOutlined/>}
+                                onClick={() => setRewardPoolsOpen(true)}
+                            >
+                                Reward Pools
+                            </Button>
+                        </Space>
                     </Col>
                 </Row>
 
@@ -231,6 +243,17 @@ const LeaderBoardPage = () => {
                 networkFilter={networkFilter}
                 showNetworkRowColor={showNetworkRowColor}
             />
+
+            <Drawer
+                title="Reward Pools"
+                placement="right"
+                open={rewardPoolsOpen}
+                onClose={() => setRewardPoolsOpen(false)}
+                rootClassName="reward-pool-drawer"
+                width={360}
+            >
+                <RewardPoolPanel rewardPools={data.rewardPools}/>
+            </Drawer>
         </div>
     );
 }

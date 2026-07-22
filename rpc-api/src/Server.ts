@@ -14,7 +14,7 @@ const dependencies = Dependencies.initDependencies();
 const logger = dependencies.logger;
 const envConfig = dependencies.envConfig;
 
-const rpcHandlers = new RpcHandlers(logger);
+const rpcHandlers = new RpcHandlers(logger, envConfig);
 rpcHandlers.init();
 
 const app = express();

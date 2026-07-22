@@ -271,3 +271,44 @@
         min-width: 90px;
     }
 }
+
+/* Click-to-watch button in the User column */
+.user-watch-link {
+    background: none;
+    border: none;
+    padding: 2px 6px;
+    margin: 0;
+    color: #69b1ff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font: inherit;
+    border-radius: 6px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.user-watch-link:hover {
+    background-color: rgba(105, 177, 255, 0.12);
+    color: #91caff;
+}
+
+.user-watch-link:focus-visible {
+    outline: 2px solid #69b1ff;
+    outline-offset: 1px;
+}
+
+.user-watch-link--disabled,
+.user-watch-link:disabled {
+    color: #8c8c8c;
+    cursor: default;
+}
+
+.user-watch-link--disabled:hover {
+    background-color: transparent;
+}
+
+.user-watch-icon {
+    font-size: 12px;
+    opacity: 0.75;
+}

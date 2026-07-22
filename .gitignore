@@ -2,3 +2,7 @@ node_modules
 .env
 .DS_Store
 blockchain-center-api/rpc.config.prod.json
+blockchain-center-api/rpc.config.test.json
+th-mode-server/dist
+bridge-monitor-client/dist
+bridge-monitor-client/.env.test

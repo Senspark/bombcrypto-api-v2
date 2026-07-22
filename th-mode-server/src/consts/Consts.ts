@@ -15,13 +15,18 @@ export enum HeroRarity {
     SuperRare,
     Epic,
     Legend,
-    SuperLegend
+    SuperLegend,
+    Mega,
+    SuperMega,
+    Mystic,
+    SuperMystic
 }
 
 export type HeroUniqueKey = string;
 
 export interface IHeroInfo {
     raceId: number;
+    uid: number;
     userName?: string;
     heroId: number;
     heroType: HeroType;

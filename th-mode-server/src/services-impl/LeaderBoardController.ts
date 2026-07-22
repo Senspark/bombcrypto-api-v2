@@ -3,13 +3,15 @@ import THUtils from "../utils/THModeV2Utils";
 import {HeroRarity, HeroUniqueKey, IHeroInfo, StreamKeys} from "../consts/Consts";
 import SortedMap from "../utils/SortedMap";
 import IMessengerService from "../services/IMessengerService";
+import RealtimeIndex from "./RealtimeIndex";
+import {removeNameSuffix} from "../utils/UserNameSuffix";
 
 type PoolIndex = HeroRarity;
 type LeaderBoard = SortedMap<HeroUniqueKey, IHeroInfo>;
 
 export default class LeaderBoardController implements ILeaderBoardController {
     /**
-     * 6 pool theo rarity
+     * 10 pool theo rarity (Common → SuperMystic)
      */
     #pools: Map<PoolIndex, LeaderBoard> = new Map();
 
@@ -20,15 +22,14 @@ export default class LeaderBoardController implements ILeaderBoardController {
     constructor(
         logger: ILogger,
         private readonly _messageService: IMessengerService,
+        private readonly _realtimeIndex: RealtimeIndex,
         private readonly _onNewDataUpdated: Function,
     ) {
 
-        this.#pools.set(HeroRarity.Common, new SortedMap(leaderBoardDescSort));
-        this.#pools.set(HeroRarity.Rare, new SortedMap(leaderBoardDescSort));
-        this.#pools.set(HeroRarity.SuperRare, new SortedMap(leaderBoardDescSort));
-        this.#pools.set(HeroRarity.Epic, new SortedMap(leaderBoardDescSort));
-        this.#pools.set(HeroRarity.Legend, new SortedMap(leaderBoardDescSort));
-        this.#pools.set(HeroRarity.SuperLegend, new SortedMap(leaderBoardDescSort));
+        const rarities = Object.values(HeroRarity).filter(v => typeof v === 'number') as HeroRarity[];
+        for (const rarity of rarities) {
+            this.#pools.set(rarity, new SortedMap(leaderBoardDescSort));
+        }
 
         // disable log
         this.#logger = logger;
@@ -71,6 +72,7 @@ export default class LeaderBoardController implements ILeaderBoardController {
             if (this.#raceId !== raceId.toString()) {
                 //this.#logger.info(`NEW Race id: ${raceId}`);
                 this.#pools.forEach(leaderBoard => leaderBoard.clear());
+                this._realtimeIndex.clearAll();
                 this.#raceId = raceId.toString();
             }
         } catch (e) {
@@ -84,6 +86,7 @@ export default class LeaderBoardController implements ILeaderBoardController {
         try {
             const hero = parseStreamValue(data);
             this.#pools.get(hero.heroRarity)!.set(hero.uniqueKey, hero);
+            this._realtimeIndex.update(hero);
             return true;
         } catch (err) {
             this.#logger.error(`Error when updateNewData ${thCurRaceValue}`);
@@ -115,7 +118,8 @@ function parseStreamValue(data: IDataThMode): IHeroInfo {
 
     return {
         raceId: raceId,
-        userName: userName ? userName : 'unknown',
+        uid: data.uid,
+        userName: userName ? removeNameSuffix(userName) : 'unknown',
         heroId: heroId,
         heroType: heroType,
         heroRarity: heroRarity,

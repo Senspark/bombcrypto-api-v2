@@ -1,6 +1,7 @@
 import express, {Express, NextFunction, Request, Response, Router} from "express";
 import simpleHandlers from "./routers/SimpleHandlers";
 import LeaderBoardHandler from "./routers/LeaderBoardHandler";
+import WatchHandler from "./routers/WatchHandler";
 import bodyParser from "body-parser";
 import extendResponse from "./consts/ExpressExtension";
 import IEnvConfig from "./services/IEnvConfig";
@@ -30,6 +31,13 @@ function setupLeaderBoardRoutes(
 ) {
     router.get(`/`, simpleHandlers.healthCheckHandler);
     router.get(`/leaderboard`, isAllowFetchThModeData, leaderboardHandler.exportData.bind(leaderboardHandler));
+}
+
+function setupWatchRoutes(
+    router: Router,
+    watchHandler: WatchHandler
+) {
+    router.get(`/watch/:wallet`, isAllowFetchThModeData, watchHandler.exportData.bind(watchHandler));
 }
 
 /**
@@ -92,6 +100,7 @@ function checkIp(req: express.Request): Boolean {
 const Routes = {
     setupBasicRoutes,
     setupLeaderBoardRoutes,
+    setupWatchRoutes,
     setupStandardModules,
 };
 

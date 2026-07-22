@@ -3,7 +3,7 @@ import IMessengerService from "../services/IMessengerService";
 import IEnvConfig from "../services/IEnvConfig";
 
 const FAKE_RACE_ID = 1;
-const MIN_STAKE_BY_RARITY = [60, 486, 971, 1942, 4854, 9709];
+const MIN_STAKE_BY_RARITY = [60, 194, 388, 777, 1942, 3883, 7766, 19415, 38830, 77660];
 const ENTRIES_PER_TICK_MIN = 3;
 const ENTRIES_PER_TICK_MAX = 8;
 
@@ -51,12 +51,14 @@ export default class FakeMessengerService implements IMessengerService {
 
     #generateEntry(): IDataThMode {
         const heroId = this.#heroIdCounter++;
-        const poolIndex = Math.floor(Math.random() * 6);
+        const uid = Math.floor(heroId / 3) + 1;  // cluster ~3 heroes per uid for watch testing
+        const poolIndex = Math.floor(Math.random() * MIN_STAKE_BY_RARITY.length);
         const minStake = MIN_STAKE_BY_RARITY[poolIndex];
         const stakeBcoin = Math.round(minStake * (1 + Math.random() * 1.5));
         return {
             raceId: FAKE_RACE_ID,
-            userName: `player_${heroId}`,
+            uid,
+            userName: `player_${uid}`,
             heroId,
             stakeBcoin,
             stakeSen: 0,
@@ -70,6 +72,7 @@ export default class FakeMessengerService implements IMessengerService {
 
 interface IDataThMode {
     raceId: number;
+    uid: number;
     userName?: string;
     heroId: number;
     stakeBcoin: number;

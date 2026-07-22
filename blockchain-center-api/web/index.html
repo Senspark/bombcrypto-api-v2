@@ -11,22 +11,54 @@
     .col-status { width: 90px; }
     .col-cooldown { width: 80px; }
     .col-num { width: 70px; }
-    .col-action { width: 80px; text-align: center; }
+    .col-action { width: 150px; text-align: center; }
     .stat { font-size: 1.2em; margin: 10px 0; }
     .ready { color: green; }
     .not-ready { color: red; }
     .in-flight { color: orange; }
     .paused { color: gray; }
     h2 { margin-top: 30px; }
-    .btn { padding: 2px 8px; cursor: pointer; }
+    .btn { padding: 2px 8px; cursor: pointer; margin: 0 1px; }
     .btn-pause { background: #ffcccc; border: 1px solid #cc0000; }
     .btn-resume { background: #ccffcc; border: 1px solid #00cc00; }
+    .btn-test { background: #cce0ff; border: 1px solid #0055cc; }
+    .btn-remove { background: #eee; border: 1px solid #888; }
+    .banner { padding: 10px 14px; margin-bottom: 16px; border-radius: 4px; font-weight: bold; display: none; }
+    .banner-error { background: #ffe0e0; border: 1px solid #cc0000; color: #a00000; }
+    .panel { background: #f7f7f7; border: 1px solid #ccc; padding: 14px; margin-bottom: 20px; border-radius: 4px; }
+    .panel input, .panel select { font-family: monospace; padding: 4px; margin-right: 6px; }
+    .panel input[type=text] { width: 420px; }
+    #testResult { margin-top: 10px; white-space: pre-wrap; }
+    .ok { color: green; }
+    .fail { color: red; }
   </style>
 </head>
 <body>
   <h1>RPC Monitor</h1>
+
+  <div id="redisBanner" class="banner banner-error">
+    ⚠ Redis disconnected — running from config only. Add/remove/pause changes are NOT being persisted.
+  </div>
+
+  <div class="panel">
+    <strong>Test &amp; Add RPC</strong><br><br>
+    <input type="text" id="rpcUrl" placeholder="https://my-rpc-url" />
+    <select id="rpcNetwork">
+      <option value="bsc">bsc</option>
+      <option value="polygon">polygon</option>
+    </select>
+    <select id="rpcType">
+      <option value="general">general</option>
+      <option value="getLogs">getLogs</option>
+    </select>
+    <button class="btn btn-test" onclick="testFromForm()">Test</button>
+    <button class="btn btn-resume" onclick="addFromForm()">Add</button>
+    <div id="testResult"></div>
+  </div>
+
   <div class="stat">Uptime: <span id="uptime">-</span></div>
   <div class="stat">All RPCs on Cooldown Count: <span id="cooldown">-</span></div>
+  <div class="stat">Egress: <span id="egress">-</span></div>
 
   <div id="networks"></div>
 
@@ -65,58 +97,224 @@
       refresh();
     }
 
-    async function refresh() {
-      const res = await fetch('/status');
+    function renderTestResult(res) {
+      const line = (label, r) => {
+        if (r.ok) {
+          const extra = label === 'getLogs'
+            ? `count=${r.count} range=${r.range} ${r.latencyMs}ms`
+            : `chainId=${r.chainId} block=${r.blockNumber} ${r.latencyMs}ms`;
+          return `<span class="ok">✓ ${label}</span> — ${extra}`;
+        }
+        return `<span class="fail">✗ ${label}</span> — ${r.error}`;
+      };
+      document.getElementById('testResult').innerHTML =
+        `Test: ${res.url}\n${line('general', res.general)}\n${line('getLogs', res.getLogs)}`;
+    }
+
+    async function testRpcUrl(url) {
+      document.getElementById('testResult').textContent = `Testing ${url} ...`;
+      try {
+        const res = await fetch('/rpc/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          document.getElementById('testResult').innerHTML = `<span class="fail">${data.error || 'test failed'}</span>`;
+          return;
+        }
+        renderTestResult(data);
+      } catch (e) {
+        document.getElementById('testResult').innerHTML = `<span class="fail">${e.message}</span>`;
+      }
+    }
+
+    function testFromForm() {
+      const url = document.getElementById('rpcUrl').value.trim();
+      if (!url) return;
+      testRpcUrl(url);
+    }
+
+    async function addFromForm() {
+      const url = document.getElementById('rpcUrl').value.trim();
+      const network = document.getElementById('rpcNetwork').value;
+      const type = document.getElementById('rpcType').value;
+      if (!url) return;
+      const res = await fetch('/rpc/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, network, url })
+      });
       const data = await res.json();
+      if (!res.ok) {
+        document.getElementById('testResult').innerHTML = `<span class="fail">Add failed: ${data.error}</span>`;
+        return;
+      }
+      document.getElementById('testResult').innerHTML = `<span class="ok">Added ${url} to ${type}/${network}</span>`;
+      document.getElementById('rpcUrl').value = '';
+      refresh();
+    }
 
-      document.getElementById('uptime').textContent = formatUptime(data.elapsedMs);
-      document.getElementById('cooldown').textContent = data.allRpcsOnCooldownCount;
+    async function removeRpc(type, network, url) {
+      if (!confirm(`Remove ${url} from ${type}/${network}?`)) return;
+      const res = await fetch('/rpc/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, network, url })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        document.getElementById('testResult').innerHTML = `<span class="fail">Remove failed: ${data.error}</span>`;
+        return;
+      }
+      refresh();
+    }
 
+    // The set of RPC rows only changes on add/remove. We build the table once
+    // (keyed by network|type|url) and on each tick update just the dynamic cells
+    // in place, so the URL cells are never touched and text selection survives.
+    let rowRefs = {};
+    let renderedSig = null;
+
+    function setText(el, val) {
+      val = String(val);
+      if (el.textContent !== val) el.textContent = val;
+    }
+
+    function renderEgress(eg) {
+      const el = document.getElementById('egress');
+      if (!eg || eg.mode === 'direct') {
+        el.innerHTML = 'direct (no proxy)';
+        return;
+      }
+      el.innerHTML = eg.targets.map(t => {
+        const cls = t.ok === false ? 'fail' : 'ok';
+        const ip = t.publicIp || (t.ok === false ? 'FAIL' : '?');
+        return `<span class="${cls}">${t.url} → ${ip}</span>`;
+      }).join('  |  ');
+    }
+
+    function signature(data) {
+      const keys = [];
+      for (const [network, types] of Object.entries(data.status)) {
+        for (const [type, rpcs] of Object.entries(types)) {
+          for (const rpc of rpcs) keys.push(`${network}|${type}|${rpc.url}`);
+        }
+      }
+      return keys.join(',');
+    }
+
+    function buildNetworks(data) {
       const container = document.getElementById('networks');
       container.innerHTML = '';
+      rowRefs = {};
 
       for (const [network, types] of Object.entries(data.status)) {
         for (const [type, rpcs] of Object.entries(types)) {
           if (rpcs.length === 0) continue;
 
-          const section = document.createElement('div');
-          section.innerHTML = `<h2>${network} - ${type}</h2>`;
+          const h2 = document.createElement('h2');
+          h2.textContent = `${network} - ${type}`;
+          container.appendChild(h2);
 
-          let tableHtml = `<table>
-            <thead>
-              <tr>
-                <th class="col-url">RPC URL</th>
-                <th class="col-status">Status</th>
-                <th class="col-cooldown">Cooldown</th>
-                <th class="col-num">Calls</th>
-                <th class="col-num">Success</th>
-                <th class="col-num">Failures</th>
-                <th class="col-num">Streak</th>
-                <th class="col-action">Action</th>
-              </tr>
-            </thead><tbody>`;
+          const table = document.createElement('table');
+          table.innerHTML = `<thead><tr>
+            <th class="col-url">RPC URL</th>
+            <th class="col-status">Status</th>
+            <th class="col-cooldown">Cooldown</th>
+            <th class="col-num">Calls</th>
+            <th class="col-num">Success</th>
+            <th class="col-num">Failures</th>
+            <th class="col-num">Streak</th>
+            <th class="col-action">Action</th>
+          </tr></thead>`;
+          const tbody = document.createElement('tbody');
 
           for (const rpc of rpcs) {
-            const stats = data.rpcStats[rpc.url] || { calls: 0, successes: 0, failures: 0, consecutiveFailures: 0 };
-            const btnClass = rpc.paused ? 'btn-resume' : 'btn-pause';
-            const btnText = rpc.paused ? 'Resume' : 'Pause';
-            tableHtml += `<tr>
-              <td title="${rpc.url}">${rpc.url}</td>
-              <td class="${getStatusClass(rpc)}">${getStatusText(rpc)}</td>
-              <td>${formatCooldown(rpc.readyAt)}</td>
-              <td>${stats.calls}</td>
-              <td>${stats.successes}</td>
-              <td>${stats.failures}</td>
-              <td>${stats.consecutiveFailures}</td>
-              <td class="col-action"><button class="btn ${btnClass}" onclick="toggleRpc('${rpc.url}')">${btnText}</button></td>
-            </tr>`;
+            const tr = document.createElement('tr');
+
+            const urlTd = document.createElement('td');
+            urlTd.className = 'col-url';
+            urlTd.title = rpc.url;
+            urlTd.textContent = rpc.url;
+
+            const statusTd = document.createElement('td');
+            const cooldownTd = document.createElement('td');
+            const callsTd = document.createElement('td');
+            const successTd = document.createElement('td');
+            const failuresTd = document.createElement('td');
+            const streakTd = document.createElement('td');
+
+            const actionTd = document.createElement('td');
+            actionTd.className = 'col-action';
+            const toggleBtn = document.createElement('button');
+            toggleBtn.addEventListener('click', () => toggleRpc(rpc.url));
+            const testBtn = document.createElement('button');
+            testBtn.className = 'btn btn-test';
+            testBtn.textContent = 'Test';
+            testBtn.addEventListener('click', () => testRpcUrl(rpc.url));
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'btn btn-remove';
+            removeBtn.textContent = 'Remove';
+            removeBtn.addEventListener('click', () => removeRpc(type, network, rpc.url));
+            actionTd.append(toggleBtn, testBtn, removeBtn);
+
+            tr.append(urlTd, statusTd, cooldownTd, callsTd, successTd, failuresTd, streakTd, actionTd);
+            tbody.appendChild(tr);
+
+            rowRefs[`${network}|${type}|${rpc.url}`] = {
+              statusTd, cooldownTd, callsTd, successTd, failuresTd, streakTd, toggleBtn,
+            };
           }
 
-          tableHtml += '</tbody></table>';
-          section.innerHTML += tableHtml;
-          container.appendChild(section);
+          table.appendChild(tbody);
+          container.appendChild(table);
         }
       }
+    }
+
+    function updateNetworks(data) {
+      for (const [network, types] of Object.entries(data.status)) {
+        for (const [type, rpcs] of Object.entries(types)) {
+          for (const rpc of rpcs) {
+            const ref = rowRefs[`${network}|${type}|${rpc.url}`];
+            if (!ref) continue;
+            const stats = data.rpcStats[rpc.url] || { calls: 0, successes: 0, failures: 0, consecutiveFailures: 0 };
+
+            const statusClass = getStatusClass(rpc);
+            if (ref.statusTd.className !== statusClass) ref.statusTd.className = statusClass;
+            setText(ref.statusTd, getStatusText(rpc));
+            setText(ref.cooldownTd, formatCooldown(rpc.readyAt));
+            setText(ref.callsTd, stats.calls);
+            setText(ref.successTd, stats.successes);
+            setText(ref.failuresTd, stats.failures);
+            setText(ref.streakTd, stats.consecutiveFailures);
+
+            const btnClass = 'btn ' + (rpc.paused ? 'btn-resume' : 'btn-pause');
+            if (ref.toggleBtn.className !== btnClass) ref.toggleBtn.className = btnClass;
+            setText(ref.toggleBtn, rpc.paused ? 'Resume' : 'Pause');
+          }
+        }
+      }
+    }
+
+    async function refresh() {
+      const res = await fetch('/status');
+      const data = await res.json();
+
+      setText(document.getElementById('uptime'), formatUptime(data.elapsedMs));
+      setText(document.getElementById('cooldown'), data.allRpcsOnCooldownCount);
+      document.getElementById('redisBanner').style.display =
+        data.redis && data.redis.connected ? 'none' : 'block';
+      renderEgress(data.egress);
+
+      const sig = signature(data);
+      if (sig !== renderedSig) {
+        buildNetworks(data);
+        renderedSig = sig;
+      }
+      updateNetworks(data);
     }
 
     refresh();

@@ -4,6 +4,8 @@
   "type": "module",
   "dependencies": {
     "ethers": "^6",
-    "express": "^4"
+    "express": "^4",
+    "https-proxy-agent": "^7",
+    "redis": "^4"
   }
 }

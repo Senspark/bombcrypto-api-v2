@@ -1,0 +1,85 @@
+.reward-pool-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.reward-pool-legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #c7d0db;
+}
+
+.reward-pool-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.reward-pool-swatch {
+    width: 14px;
+    height: 6px;
+    border-radius: 2px;
+    display: inline-block;
+}
+
+.reward-pool-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.reward-pool-name {
+    flex: 0 0 58px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #e6e9ef;
+    overflow-wrap: anywhere;
+}
+
+.reward-pool-bars {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.reward-pool-progress {
+    margin: 0;
+    min-width: 0;
+}
+
+.reward-pool-empty {
+    font-size: 11px;
+    color: #8a909c;
+}
+
+/* Dark theme for the slide-out Drawer (app has no AntD dark algorithm) */
+.reward-pool-drawer .ant-drawer-content {
+    background: #141a20;
+}
+
+.reward-pool-drawer .ant-drawer-header {
+    background: #141a20;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reward-pool-drawer .ant-drawer-title {
+    color: #e6e9ef;
+}
+
+.reward-pool-drawer .ant-drawer-close {
+    color: #c7d0db;
+}
+
+.reward-pool-drawer .ant-drawer-body {
+    background: #0e1318;
+    padding: 12px 16px;
+}

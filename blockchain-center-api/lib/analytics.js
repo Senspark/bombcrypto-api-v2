@@ -32,6 +32,15 @@ class Analytics {
     }
   }
 
+  // Clear counters for a URL (used when an RPC is resumed, so it's easy to watch).
+  resetRpc(url) {
+    this.rpcStats[url] = { calls: 0, successes: 0, failures: 0, consecutiveFailures: 0 };
+  }
+
+  removeRpc(url) {
+    delete this.rpcStats[url];
+  }
+
   getStats() {
     return {
       serverStartTime: this.serverStartTime,

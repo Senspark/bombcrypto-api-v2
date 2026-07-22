@@ -1,36 +1,29 @@
-import axios, {AxiosResponse} from "axios";
-
 export async function sendGetRequest<T>(url: string, withCredentials: boolean): Promise<T | null> {
     const isSecure = window.location.protocol === 'https:';
     try {
-        const axiosResponse = await axios.get(url, {withCredentials: isSecure ? withCredentials : false});
+        const res = await fetch(url, {
+            credentials: isSecure && withCredentials ? 'include' : 'omit',
+        });
+        if (!res.ok) return null;
 
-        const response = parseApiResponseData(axiosResponse);
-        if (!response.success) {
-            return null;
-        }
+        const data = (await res.json()) as IApiResponseData;
+        if (!data.success) return null;
 
-        // Handle case where message is a string that needs parsing
-        if (typeof response.message === 'string') {
+        if (typeof data.message === 'string') {
             try {
-                return JSON.parse(response.message) as T;
-            } catch (e) {
-                return response.message as unknown as T;
+                return JSON.parse(data.message) as T;
+            } catch {
+                return data.message as unknown as T;
             }
         }
-
-        return response.message as T;
-    } catch (e) {
+        return data.message as T;
+    } catch {
         return null;
     }
 }
 
-function parseApiResponseData(response: AxiosResponse) {
-    return response.data as IApiResponseData;
-}
-
 interface IApiResponseData {
-    success: boolean,
-    error: string,
-    message: any
+    success: boolean;
+    error: string;
+    message: any;
 }

@@ -33,7 +33,7 @@ function validateContractAddress(contractAddress) {
 }
 
 function validateCallContractRequest(body) {
-  const { network, contractAddress, abi, methodName, args } = body;
+  const { network, contractAddress, abi, methodName, args, confirmations } = body;
   const normalizedNetwork = normalizeNetwork(network);
 
   if (!normalizedNetwork || !RPC_URLS_GENERAL_USE[normalizedNetwork]) {
@@ -61,10 +61,17 @@ function validateCallContractRequest(body) {
     return "args must be an array (can be empty)";
   }
 
+  if (confirmations !== undefined && (!Number.isInteger(confirmations) || confirmations < 0)) {
+    return "confirmations must be an integer >= 0";
+  }
+
   return null;
 }
 
-async function executeContractCall(rpcManager, contractAddress, abi, methodName, args) {
+// `confirmations` (approach B — reorg-safe reads): read at a fixed depth behind the tip so a read
+// can't land on a block that later reorgs out. The gateway computes blockTag = latest - confirmations
+// itself (full nodes retain ~128 recent blocks, so no archive node needed). 0/undefined = read latest.
+async function executeContractCall(rpcManager, contractAddress, abi, methodName, args, confirmations) {
   const maxRetries = rpcManager.getRpcCount();
   let lastError = null;
 
@@ -75,8 +82,14 @@ async function executeContractCall(rpcManager, contractAddress, abi, methodName,
     try {
       const result = await withProvider(rpcUrl, async (provider) => {
         const contract = new Contract(contractAddress, abi, provider);
+        const callArgs = [...args];
+        if (confirmations > 0) {
+          const latest = await fetchWithTimeout(provider.getBlockNumber(), REQUEST_TIMEOUT_MS);
+          const blockTag = Math.max(0, latest - confirmations);
+          callArgs.push({ blockTag });
+        }
         return await fetchWithTimeout(
-          contract[methodName](...args),
+          contract[methodName](...callArgs),
           REQUEST_TIMEOUT_MS
         );
       });
@@ -107,7 +120,7 @@ async function handleCallContract(req, res) {
     });
   }
 
-  const { network, contractAddress, abi, methodName, args } = req.body;
+  const { network, contractAddress, abi, methodName, args, confirmations } = req.body;
   const normalizedNetwork = normalizeNetwork(network);
 
   try {
@@ -117,7 +130,8 @@ async function handleCallContract(req, res) {
       contractAddress,
       abi,
       methodName,
-      args
+      args,
+      confirmations ?? 0
     );
 
     if (result.success) {

@@ -1,5 +1,7 @@
 import { allNetworks, rpcManagersForLogs, rpcManagersGeneral } from "../utils/rpc.js";
 import { analytics } from "../lib/analytics.js";
+import { isRedisConnected } from "../lib/redisClient.js";
+import { getEgressStatus } from "../lib/egress.js";
 
 function handleAnalytics(req, res) {
   const status = {};
@@ -15,6 +17,8 @@ function handleAnalytics(req, res) {
 
   return res.json({
     ...stats,
+    redis: { connected: isRedisConnected() },
+    egress: getEgressStatus(),
     status,
   });
 }

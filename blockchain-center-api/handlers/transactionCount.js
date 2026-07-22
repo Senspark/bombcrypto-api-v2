@@ -22,7 +22,7 @@ function validateAddress(address) {
 }
 
 function validateRequest(body) {
-  const { network, address } = body;
+  const { network, address, blockTag } = body;
   const normalizedNetwork = normalizeNetwork(network);
 
   if (!normalizedNetwork || !RPC_URLS_GENERAL_USE[normalizedNetwork]) {
@@ -38,10 +38,14 @@ function validateRequest(body) {
     return addressError;
   }
 
+  if (blockTag !== undefined && blockTag !== "latest" && blockTag !== "pending") {
+    return "blockTag must be 'latest' or 'pending'";
+  }
+
   return null;
 }
 
-async function executeGetTransactionCount(rpcManager, address) {
+async function executeGetTransactionCount(rpcManager, address, blockTag) {
   const maxRetries = rpcManager.getRpcCount();
   let lastError = null;
 
@@ -51,7 +55,7 @@ async function executeGetTransactionCount(rpcManager, address) {
     try {
       const result = await withProvider(rpcUrl, async (provider) => {
         return await fetchWithTimeout(
-          provider.getTransactionCount(address),
+          provider.getTransactionCount(address, blockTag),
           REQUEST_TIMEOUT_MS
         );
       });
@@ -82,12 +86,12 @@ async function handleGetTransactionCount(req, res) {
     });
   }
 
-  const { network, address } = req.body;
+  const { network, address, blockTag } = req.body;
   const normalizedNetwork = normalizeNetwork(network);
 
   try {
     const rpcManager = getRpcManagerGeneral(normalizedNetwork);
-    const result = await executeGetTransactionCount(rpcManager, address);
+    const result = await executeGetTransactionCount(rpcManager, address, blockTag ?? "latest");
 
     if (result.success) {
       return res.json({
