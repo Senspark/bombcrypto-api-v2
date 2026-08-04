@@ -12,6 +12,19 @@ export const BRIDGE_ABI = [
   "event Withdraw(address indexed user, address indexed token, uint256 amount, uint256 net, uint256 otherDeposited, uint256 deadline, uint256 withdrawnTotal)",
 ];
 
+// DepositNative — a native (BNB / POL) vault. deposit() is payable (no token, no
+// approve); withdraw is user-relayed withdraw-MAX with a server signature, the
+// contract self-computes amount = allowedCumulative − withdrawn[user].
+export const NATIVE_ABI = [
+  "function deposit() payable",
+  "function withdraw(uint256 allowedCumulative, uint256 deadline, bytes signature)",
+  "function deposited(address user) view returns (uint256)",
+  "function withdrawn(address user) view returns (uint256)",
+  "function depositEnabled() view returns (bool)",
+  "function withdrawEnabled() view returns (bool)",
+  "event NativeWithdrawn(address indexed user, uint256 amount, uint256 allowedCumulative, uint256 withdrawnTotal)",
+];
+
 export const ERC20_ABI = [
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
