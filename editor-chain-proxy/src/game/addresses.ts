@@ -54,6 +54,33 @@ export function tokenAddress(network: string, symbol: string): string {
   return addr;
 }
 
+// ── DepositNative registry (native BNB / POL vault) ────────────────────────
+// One DepositNative proxy per testnet. Deploy is per-network (see the phase-1
+// design), so these are filled AFTER `deploy-deposit-native.js` runs. An env var
+// (NATIVE_BSCTESTNET / NATIVE_AMOY) overrides the entry so a tester can point at a
+// fresh deploy without editing source; empty on both sides throws a clear 400.
+const NATIVE_REGISTRY: Record<string, string> = {
+  bsctestnet: "0xa32ff6Ea5805cF2D4c5c0900692EACC7d9122340",
+  amoy: "0x775861412413b8CeACf37069B3476a2C9Be8eFe3",
+};
+
+const NATIVE_ENV: Record<string, string | undefined> = {
+  bsctestnet: process.env.NATIVE_BSCTESTNET,
+  amoy: process.env.NATIVE_AMOY,
+};
+
+export function nativeAddress(network: string): string {
+  const addr = NATIVE_ENV[network] || NATIVE_REGISTRY[network];
+  if (!addr) {
+    throw new HttpError(
+      400,
+      `No DepositNative address on '${network}' yet — deploy it and set NATIVE_${network.toUpperCase()} ` +
+        `(or fill NATIVE_REGISTRY).`,
+    );
+  }
+  return addr;
+}
+
 // ── Full game-contract registry (Milestone 2) ──────────────────────────────
 // One entry per supported contract per testnet network. A missing/empty address
 // throws at lookup time, so an unsupported command surfaces a clear 400 instead

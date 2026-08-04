@@ -3,6 +3,7 @@ import { makeProvider } from "../chain";
 import { HttpError } from "../errors";
 import { resolveNetwork } from "../networks";
 import { Bridge } from "./bridge";
+import { Native } from "./native";
 import { GameContext } from "./context";
 import { GameManager } from "./manager";
 import { getRpcBalance } from "./modules/rpcTokens";
@@ -81,8 +82,33 @@ export async function handleGame(body: unknown) {
     const game = (): GameManager => (manager ??= new GameManager(ctx));
     let bridgeInst: Bridge | null = null;
     const bridge = (): Bridge => (bridgeInst ??= new Bridge(provider, net.name, net.chainId));
+    let nativeInst: Native | null = null;
+    const native = (): Native => (nativeInst ??= new Native(provider, net.name, net.chainId));
 
     switch (req.command) {
+      // ── Native BNB / POL vault (DepositNative) ──
+      case "NATIVE_GET_DEPOSITED":
+        return { result: await native().deposited(str(p, "walletAddress")) };
+      case "NATIVE_GET_WITHDRAWN":
+        return { result: await native().withdrawn(str(p, "walletAddress")) };
+      case "NATIVE_GET_DEPOSIT_ENABLED":
+        return { result: await native().depositEnabled() };
+      case "NATIVE_GET_WITHDRAW_ENABLED":
+        return { result: await native().withdrawEnabled() };
+      case "NATIVE_GET_WALLET_BALANCE":
+        return { result: await native().walletBalance(str(p, "walletAddress")) };
+      case "NATIVE_DEPOSIT":
+        return { result: await native().deposit(requireKey(req), str(p, "amountWei")) };
+      case "NATIVE_WITHDRAW":
+        return {
+          result: await native().withdraw(
+            requireKey(req),
+            str(p, "allowedCumulative"),
+            str(p, "deadline"),
+            str(p, "signature"),
+          ),
+        };
+
       // ── Cross-chain DepositBridge (Milestone 1) ──
       case "BRIDGE_GET_DEPOSITED":
         return { result: await bridge().deposited(str(p, "walletAddress"), str(p, "token")) };
