@@ -13,6 +13,7 @@ import MarketTreasuryTab from "./marketTreasury/MarketTreasuryTab.vue";
 import StakeTreasuryTab from "./stakeTreasury/StakeTreasuryTab.vue";
 import BHeroSTreasuryTab from "./bherosTreasury/BHeroSTreasuryTab.vue";
 import DepositNativeTreasuryTab from "./depositNativeTreasury/DepositNativeTreasuryTab.vue";
+import TreasuryManagerTab from "./treasuryManager/TreasuryManagerTab.vue";
 
 // Running backend build identity. `code` is a hash of the actual running bytes — if it does NOT change after a
 // deploy, the new code did not take effect (cache hit / container not recreated), regardless of the version bump.
@@ -41,6 +42,7 @@ const tabs = [
     {key: "stake-treasury", label: "Stake Treasury"},
     {key: "bheros-treasury", label: "BHeroS Treasury"},
     {key: "deposit-native-treasury", label: "Deposit Native Treasury"},
+    {key: "treasury-manager", label: "Auto Swap"},
 ] as const;
 
 // Tab ↔ URL hash (e.g. .../#wallets) so a given tab is shareable by link and survives reload/back-forward.
@@ -95,5 +97,6 @@ window.addEventListener("hashchange", () => {
         <StakeTreasuryTab v-else-if="active === 'stake-treasury'"/>
         <BHeroSTreasuryTab v-else-if="active === 'bheros-treasury'"/>
         <DepositNativeTreasuryTab v-else-if="active === 'deposit-native-treasury'"/>
+        <TreasuryManagerTab v-else-if="active === 'treasury-manager'"/>
     </main>
 </template>

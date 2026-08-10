@@ -7,6 +7,7 @@ import vue from "@vitejs/plugin-vue";
 export default defineConfig(({mode}) => {
     const env = loadEnv(mode, process.cwd(), "");
     const target = env.VITE_MONITOR_TARGET || "http://localhost:8108";
+    const treasuryTarget = env.VITE_TREASURY_TARGET || "http://localhost:8110";
     return {
         // Relative asset URLs so the build runs under any path (bucket subpath, domain root) without a rebuild.
         // Safe here because routing is hash-based (#wallets) — index.html never moves out of its own directory.
@@ -16,6 +17,7 @@ export default defineConfig(({mode}) => {
             port: 8200,
             proxy: {
                 "/monitor": {target, changeOrigin: true},
+                "/treasury": {target: treasuryTarget, changeOrigin: true},
             },
         },
     };
