@@ -9,6 +9,10 @@ import WalletsView from "./components/WalletsView.vue";
 import LifecycleView from "./components/LifecycleView.vue";
 import TransactionsView from "./components/TransactionsView.vue";
 import TreasuryTab from "./treasury/TreasuryTab.vue";
+import MarketTreasuryTab from "./marketTreasury/MarketTreasuryTab.vue";
+import StakeTreasuryTab from "./stakeTreasury/StakeTreasuryTab.vue";
+import BHeroSTreasuryTab from "./bherosTreasury/BHeroSTreasuryTab.vue";
+import DepositNativeTreasuryTab from "./depositNativeTreasury/DepositNativeTreasuryTab.vue";
 
 // Running backend build identity. `code` is a hash of the actual running bytes — if it does NOT change after a
 // deploy, the new code did not take effect (cache hit / container not recreated), regardless of the version bump.
@@ -32,7 +36,11 @@ const tabs = [
     {key: "gaps", label: "Khoảng trống / Bù dữ liệu"},
     {key: "lifecycle", label: "Vòng đời withdraw"},
     {key: "health", label: "Tình trạng"},
-    {key: "treasury", label: "Treasury"},
+    {key: "treasury", label: "Bridge Treasury"},
+    {key: "market-treasury", label: "Market Treasury"},
+    {key: "stake-treasury", label: "Stake Treasury"},
+    {key: "bheros-treasury", label: "BHeroS Treasury"},
+    {key: "deposit-native-treasury", label: "Deposit Native Treasury"},
 ] as const;
 
 // Tab ↔ URL hash (e.g. .../#wallets) so a given tab is shareable by link and survives reload/back-forward.
@@ -83,5 +91,9 @@ window.addEventListener("hashchange", () => {
         <LifecycleView v-else-if="active === 'lifecycle'"/>
         <HealthView v-else-if="active === 'health'"/>
         <TreasuryTab v-else-if="active === 'treasury'"/>
+        <MarketTreasuryTab v-else-if="active === 'market-treasury'"/>
+        <StakeTreasuryTab v-else-if="active === 'stake-treasury'"/>
+        <BHeroSTreasuryTab v-else-if="active === 'bheros-treasury'"/>
+        <DepositNativeTreasuryTab v-else-if="active === 'deposit-native-treasury'"/>
     </main>
 </template>

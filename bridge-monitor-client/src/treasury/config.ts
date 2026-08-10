@@ -53,9 +53,9 @@ export const ROUTES: SwapRoute[] = [
     },
 ];
 
-export const CHAINS: Record<number, {name: string; explorerTx: string}> = {
-    [POLYGON_CHAIN_ID]: {name: "Polygon", explorerTx: "https://polygonscan.com/tx/"},
-    [BSC_CHAIN_ID]: {name: "BSC", explorerTx: "https://bscscan.com/tx/"},
+export const CHAINS: Record<number, {name: string; explorerTx: string; explorerAddress: string}> = {
+    [POLYGON_CHAIN_ID]: {name: "Polygon", explorerTx: "https://polygonscan.com/tx/", explorerAddress: "https://polygonscan.com/address/"},
+    [BSC_CHAIN_ID]: {name: "BSC", explorerTx: "https://bscscan.com/tx/", explorerAddress: "https://bscscan.com/address/"},
 };
 
 // DepositBridge proxy per chain — target of the treasury flow.

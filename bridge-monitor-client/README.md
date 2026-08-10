@@ -23,3 +23,11 @@ npm run dev          # http://localhost:8200
 - **Wallets** — per-wallet `deposited`/`withdrawn` state, filterable by chain/token or a single-wallet lookup.
 - **Lifecycle** — signed withdraw authorizations and how they resolved (`signed`/`executed`/`expired`).
 - **Health** — indexer cursor lag vs the confirmed chain head.
+- **Bridge Treasury** — swap DepositBridge's collected fees to USDT and withdraw, per chain.
+- **Market Treasury** — same swap-to-USDT flow for BHeroMarket/BHouseMarket's marketplace tax
+  (BCOIN/SENSPARK, BSC + Polygon); withdraw sweeps the full USDT balance (`withdrawV2`), no
+  recipient/amount to pick.
+- **Stake Treasury** — same swap-to-USDT flow for BCoinStake/SenStake. Unlike Market, this
+  contract's balance isn't purely fee (it also holds staker principal); the UI shows `totalStake`
+  next to the balance and warns when balance is already below it, but the contract itself has no
+  guard — swapping past that point is an explicit operator call (staking is being sunset).

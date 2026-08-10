@@ -359,3 +359,58 @@ td.num, th.num {
 .upload-label input {
     display: none;
 }
+
+/* Treasury tabs: group a section (market/bridge) with a per-chain BSC|Polygon column split so
+   several contract instances never blur into one long list. */
+.market-group {
+    margin-bottom: 28px;
+}
+
+.market-group + .market-group {
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.market-title {
+    margin: 0 0 14px;
+    font-size: 17px;
+}
+
+.chain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+.chain-col {
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid transparent;
+}
+
+/* Subtle per-chain tint (dark-friendly) so BSC vs Polygon columns are distinguishable at a glance,
+   matching the amber/purple already used by the chain chip. */
+.chain-col-bsc {
+    background: rgba(245, 166, 35, 0.05);
+    border-color: rgba(245, 166, 35, 0.22);
+}
+
+.chain-col-polygon {
+    background: rgba(139, 92, 246, 0.06);
+    border-color: rgba(139, 92, 246, 0.22);
+}
+
+.chain-title {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.chain-title .mono {
+    font-weight: 400;
+    font-size: 12px;
+}
