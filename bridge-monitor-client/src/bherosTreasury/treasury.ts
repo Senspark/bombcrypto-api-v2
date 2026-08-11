@@ -10,6 +10,7 @@ import {readProvider, walletSigner} from "../treasury/wallet";
 import {ERC20_ABI, type Quote, type TreasuryInfo} from "../treasury/types";
 import {buildPolygonCalldata, quotePolygon} from "../treasury/polygonSwap";
 import {SMART_ROUTER, buildSmartRouterCalldata, quoteBsc} from "../treasury/bscSwap";
+import {swapGasLimit} from "../treasury/gas";
 import {BSC_CHAIN_ID, type BHeroSInstance, type SwapRoute} from "./config";
 
 const BHEROS_ABI = [
@@ -75,7 +76,8 @@ export async function swapBHeroSFees(instance: BHeroSInstance, route: SwapRoute,
 
     const signer = await walletSigner(instance.chainId);
     const contract = new Contract(instance.address, BHEROS_ABI, signer);
-    const tx = await contract.swapToUSDT(route.tokenIn, q.amountIn, router, calldata, q.minOut);
+    const args = [route.tokenIn, q.amountIn, router, calldata, q.minOut];
+    const tx = await contract.swapToUSDT(...args, {gasLimit: await swapGasLimit(contract.swapToUSDT, args)});
     await tx.wait();
     return tx.hash;
 }

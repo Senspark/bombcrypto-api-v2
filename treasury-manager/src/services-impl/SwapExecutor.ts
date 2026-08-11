@@ -56,10 +56,17 @@ export default class SwapExecutor implements ISwapExecutor {
         const wallet = this.clients.wallet(instance.chainId);
         const contract = new Contract(instance.address, TREASURY_ABI, wallet);
 
+        // ethers hands the node a fixed gasLimit from its own estimate, leaving no margin for the cost
+        // drifting between estimate and mining (a cold storage slot, or the router picking a longer
+        // route). Short by a few percent and the inner router call runs out, returns false, and the
+        // contract's require(ok) reverts — which stops the whole schedule. Unused gas is refunded.
+        const args = [route.tokenIn, q.amountIn, router, calldata, q.minOut];
+        const gasLimit = (await contract.swapToUSDT.estimateGas(...args)) * 2n;
+
         this.log.info(
-            `${instance.id}/${route.id} sending swapToUSDT amountIn=${q.amountIn} minOut=${q.minOut} router=${router}`,
+            `${instance.id}/${route.id} sending swapToUSDT amountIn=${q.amountIn} minOut=${q.minOut} router=${router} gasLimit=${gasLimit}`,
         );
-        const tx = await contract.swapToUSDT(route.tokenIn, q.amountIn, router, calldata, q.minOut);
+        const tx = await contract.swapToUSDT(...args, {gasLimit});
         this.log.info(`${instance.id}/${route.id} tx ${tx.hash} sent, waiting for receipt`);
         const receipt = await tx.wait();
         if (!receipt || receipt.status !== 1) {

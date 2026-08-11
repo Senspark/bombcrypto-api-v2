@@ -7,6 +7,7 @@ import {readProvider, walletSigner} from "./wallet";
 import {ERC20_ABI, type Quote, type TreasuryInfo} from "./types";
 import {buildPolygonCalldata, quotePolygon} from "./polygonSwap";
 import {SMART_ROUTER, buildSmartRouterCalldata, quoteBsc} from "./bscSwap";
+import {swapGasLimit} from "./gas";
 
 const BRIDGE_ABI = [
     "function collectedFees(address) view returns (uint256)",
@@ -74,7 +75,8 @@ export async function swapFees(route: SwapRoute, humanAmount: string, slippageBp
 
     const signer = await walletSigner(route.chainId);
     const bridge = new Contract(bridgeAddr, BRIDGE_ABI, signer);
-    const tx = await bridge.swapFeesToUSDT(route.tokenIn, q.amountIn, router, calldata, q.minOut);
+    const args = [route.tokenIn, q.amountIn, router, calldata, q.minOut];
+    const tx = await bridge.swapFeesToUSDT(...args, {gasLimit: await swapGasLimit(bridge.swapFeesToUSDT, args)});
     await tx.wait();
     return tx.hash;
 }

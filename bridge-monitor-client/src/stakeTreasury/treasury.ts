@@ -11,6 +11,7 @@ import {readProvider, walletSigner} from "../treasury/wallet";
 import {ERC20_ABI, type Quote} from "../treasury/types";
 import {buildPolygonCalldata, quotePolygon} from "../treasury/polygonSwap";
 import {SMART_ROUTER, buildSmartRouterCalldata, quoteBsc} from "../treasury/bscSwap";
+import {swapGasLimit} from "../treasury/gas";
 import {BSC_CHAIN_ID, type StakeInstance, type SwapRoute} from "./config";
 
 const STAKE_ABI = [
@@ -89,7 +90,8 @@ export async function swapStakeFees(stake: StakeInstance, route: SwapRoute, huma
 
     const signer = await walletSigner(stake.chainId);
     const contract = new Contract(stake.address, STAKE_ABI, signer);
-    const tx = await contract.swapToUSDT(route.tokenIn, q.amountIn, router, calldata, q.minOut);
+    const args = [route.tokenIn, q.amountIn, router, calldata, q.minOut];
+    const tx = await contract.swapToUSDT(...args, {gasLimit: await swapGasLimit(contract.swapToUSDT, args)});
     await tx.wait();
     return tx.hash;
 }
