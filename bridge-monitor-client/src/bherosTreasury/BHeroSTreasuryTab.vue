@@ -4,7 +4,6 @@ import {shortAddr} from "../format";
 import {BHEROS, BSC_CHAIN_ID, CHAINS, routesFor, type BHeroSInstance} from "./config";
 import {walletAccount} from "../treasury/wallet";
 import WalletToolbar from "../treasury/WalletToolbar.vue";
-import BHeroSCard from "./BHeroSCard.vue";
 import DistributeCard from "./DistributeCard.vue";
 import WithdrawBHeroSPanel from "./WithdrawBHeroSPanel.vue";
 
@@ -27,9 +26,8 @@ function onSwapped(instanceId: string) {
     <p class="muted">
         Manager (WITHDRAWER_ROLE) chia phí Hero sale 4 chân trong một tx: community / marketing / burn
         chuyển thẳng sang 3 treasury, phần dev swap ra USDT và ở lại contract, rút bằng
-        <span class="mono">withdrawCustomToken</span>. Chain chưa upgrade vẫn giữ nút swap cũ
-        (<span class="mono">swapToUSDT</span>). Toàn bộ balance là phí — BHeroS không giữ tiền của
-        người dùng. Ví phải có WITHDRAWER_ROLE, cần BNB/POL trả gas.
+        <span class="mono">withdrawCustomToken</span>. Toàn bộ balance là phí — BHeroS không giữ tiền
+        của người dùng. Ví phải có WITHDRAWER_ROLE, cần BNB/POL trả gas.
     </p>
 
     <div class="chain-grid">
@@ -41,13 +39,11 @@ function onSwapped(instanceId: string) {
                 <span class="chip" :class="instance.chainId === BSC_CHAIN_ID ? 'chip-bsc' : 'chip-polygon'">{{ CHAINS[instance.chainId].name }}</span>
                 <a class="mono" :href="CHAINS[instance.chainId].explorerAddress + instance.address" target="_blank" rel="noreferrer">{{ shortAddr(instance.address) }}</a>
             </h3>
-            <template v-for="r in routesFor(instance)" :key="r.id">
-                <DistributeCard
-                    v-if="instance.distributes" :instance="instance" :route="r" :owner="walletAccount"
-                    @changed="onSwapped(instance.id)"
-                />
-                <BHeroSCard v-else :instance="instance" :route="r" :owner="walletAccount" @swapped="onSwapped(instance.id)"/>
-            </template>
+            <DistributeCard
+                v-for="r in routesFor(instance)" :key="r.id"
+                :instance="instance" :route="r" :owner="walletAccount"
+                @changed="onSwapped(instance.id)"
+            />
             <WithdrawBHeroSPanel
                 :ref="(el) => (panels[instance.id] = el as any)"
                 :instance="instance" :usdt-address="routesFor(instance)[0].tokenOut" :owner="walletAccount"

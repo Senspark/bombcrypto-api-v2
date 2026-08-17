@@ -1,13 +1,11 @@
 export const BSC_CHAIN_ID = 56;
 export const POLYGON_CHAIN_ID = 137;
 
-export type ContractKind = "market" | "bheros";
 export type RouteKind = "v2" | "algebra" | "smart";
 
 export interface TreasuryInstance {
     id: string;
     label: string;
-    kind: ContractKind;
     chainId: number;
     address: string;
 }
@@ -23,13 +21,13 @@ export interface SwapRoute {
     tokenOutSymbol: string;
 }
 
+// Markets only. BHeroS was dropped when its proxy lost swapToUSDT in favour of the treasury
+// splitter — it is driven from the BHeroS tab's withdrawToTreasury button, not from here.
 export const INSTANCES: TreasuryInstance[] = [
-    {id: "bhero-bsc", label: "BHeroMarket", kind: "market", chainId: BSC_CHAIN_ID, address: "0x376A10E7f125A4E0a567cc08043c695Cd8EDd704"},
-    {id: "bhero-polygon", label: "BHeroMarket", kind: "market", chainId: POLYGON_CHAIN_ID, address: "0xf3a7195920519f8a22cdf84ebb9f74342abe9812"},
-    {id: "bhouse-bsc", label: "BHouseMarket", kind: "market", chainId: BSC_CHAIN_ID, address: "0x049896f350C802CD5C91134E5f35Ec55FA8f0108"},
-    {id: "bhouse-polygon", label: "BHouseMarket", kind: "market", chainId: POLYGON_CHAIN_ID, address: "0xbb5966daf83ec4d3f168671a464eb18430eea3be"},
-    {id: "bheros-bsc", label: "BHeroS", kind: "bheros", chainId: BSC_CHAIN_ID, address: "0x9fb9b7349279266c85c0C9dd264D71d2a4B79AB4"},
-    {id: "bheros-polygon", label: "BHeroS", kind: "bheros", chainId: POLYGON_CHAIN_ID, address: "0x27313635E6B7AA3CC8436E24BE2317D4A0e56BeB"},
+    {id: "bhero-bsc", label: "BHeroMarket", chainId: BSC_CHAIN_ID, address: "0x376A10E7f125A4E0a567cc08043c695Cd8EDd704"},
+    {id: "bhero-polygon", label: "BHeroMarket", chainId: POLYGON_CHAIN_ID, address: "0xf3a7195920519f8a22cdf84ebb9f74342abe9812"},
+    {id: "bhouse-bsc", label: "BHouseMarket", chainId: BSC_CHAIN_ID, address: "0x049896f350C802CD5C91134E5f35Ec55FA8f0108"},
+    {id: "bhouse-polygon", label: "BHouseMarket", chainId: POLYGON_CHAIN_ID, address: "0xbb5966daf83ec4d3f168671a464eb18430eea3be"},
 ];
 
 export const POLYGON_USDT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
@@ -84,7 +82,7 @@ export const ERC20_ABI = [
     "function balanceOf(address) view returns (uint256)",
 ];
 
-// swapToUSDT and the preflight getters are identical across BHeroMarket, BHouseMarket and BHeroS.
+// swapToUSDT and the preflight getters are identical across BHeroMarket and BHouseMarket.
 export const TREASURY_ABI = [
     "function swapRouterAllowed(address) view returns (bool)",
     "function usdtToken() view returns (address)",

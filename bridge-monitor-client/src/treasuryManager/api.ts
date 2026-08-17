@@ -5,7 +5,6 @@ const BASE = "/treasury";
 export interface TreasuryInstance {
     id: string;
     label: string;
-    kind: "market" | "bheros";
     chainId: number;
     address: string;
 }

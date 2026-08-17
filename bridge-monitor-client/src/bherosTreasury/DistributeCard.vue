@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Four-leg distribution for a BHeroS instance already upgraded to withdrawToTreasury. Instances
-// still on the old path keep BHeroSCard.vue; the tab picks between them on `instance.distributes`.
+// Four-leg distribution for a BHeroS instance, via withdrawToTreasury. The only card the tab has —
+// the proxy dropped swapToUSDT, so there is no old-path variant to fall back to.
 import {computed, ref, watch} from "vue";
 import {formatUnits} from "ethers";
 import {CHAINS, type BHeroSInstance, type SwapRoute} from "./config";
