@@ -12,6 +12,7 @@ import TreasuryTab from "./treasury/TreasuryTab.vue";
 import MarketTreasuryTab from "./marketTreasury/MarketTreasuryTab.vue";
 import StakeTreasuryTab from "./stakeTreasury/StakeTreasuryTab.vue";
 import BHeroSTreasuryTab from "./bherosTreasury/BHeroSTreasuryTab.vue";
+import HeroStakeTreasuryTab from "./heroStakeTreasury/HeroStakeTreasuryTab.vue";
 import DepositNativeTreasuryTab from "./depositNativeTreasury/DepositNativeTreasuryTab.vue";
 import TreasuryManagerTab from "./treasuryManager/TreasuryManagerTab.vue";
 
@@ -41,6 +42,7 @@ const tabs = [
     {key: "market-treasury", label: "Market Treasury"},
     {key: "stake-treasury", label: "Stake Treasury"},
     {key: "bheros-treasury", label: "BHeroS Treasury"},
+    {key: "herostake-treasury", label: "BHeroStake Treasury"},
     {key: "deposit-native-treasury", label: "Deposit Native Treasury"},
     {key: "treasury-manager", label: "Auto Swap"},
 ] as const;
@@ -96,6 +98,7 @@ window.addEventListener("hashchange", () => {
         <MarketTreasuryTab v-else-if="active === 'market-treasury'"/>
         <StakeTreasuryTab v-else-if="active === 'stake-treasury'"/>
         <BHeroSTreasuryTab v-else-if="active === 'bheros-treasury'"/>
+        <HeroStakeTreasuryTab v-else-if="active === 'herostake-treasury'"/>
         <DepositNativeTreasuryTab v-else-if="active === 'deposit-native-treasury'"/>
         <TreasuryManagerTab v-else-if="active === 'treasury-manager'"/>
     </main>

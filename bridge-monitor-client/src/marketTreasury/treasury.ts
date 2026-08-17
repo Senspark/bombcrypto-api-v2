@@ -1,23 +1,39 @@
 // Market treasury service (BHeroMarket / BHouseMarket): read fee balance / USDT balance, quote
 // (dispatch by chain — reuses the bridge's quote+calldata builders as-is, they're contract-agnostic),
-// and trigger swapToUSDT / withdrawV2. Unlike DepositBridge's collectedFees bookkeeping, there's no
+// and trigger withdrawToTreasury / swapToUSDT / withdrawV2.
+//
+// Two withdrawal paths live here at once. withdrawToTreasury splits four ways through the
+// TreasurySplitter and is the one to use; swapToUSDT is the old single-leg swap, kept for the
+// markets not upgraded yet. Which one a market gets is `MarketInstance.distributes`.
+//
+// Unlike DepositBridge's collectedFees bookkeeping, there's no
 // separate fee tracker here — the whole tokenIn balance is already free to swap (this contract never
 // custodies user principal). withdrawV2(token) sweeps the entire balance to msg.sender, no to/amount params.
-import {Contract} from "ethers";
+import {Contract, ZeroAddress, formatUnits, parseUnits} from "ethers";
 import {ALGEBRA_SWAP_ROUTER, QUICKSWAP_V2_ROUTER} from "../treasury/config";
 import {readProvider, walletSigner} from "../treasury/wallet";
 import {ERC20_ABI, type Quote, type TreasuryInfo} from "../treasury/types";
 import {buildPolygonCalldata, quotePolygon} from "../treasury/polygonSwap";
 import {SMART_ROUTER, buildSmartRouterCalldata, quoteBsc} from "../treasury/bscSwap";
 import {swapGasLimit} from "../treasury/gas";
+import {
+    computeLegs, readSplitterView,
+    type Legs, type SourceSplit as MarketSplit, type SplitterView,
+} from "../treasury/splitter";
 import {BSC_CHAIN_ID, type MarketInstance, type SwapRoute} from "./config";
+
+export {computeLegs};
+export type {Legs, MarketSplit};
 
 const MARKET_ABI = [
     "function swapRouterAllowed(address) view returns (bool)",
     "function usdtToken() view returns (address)",
     "function swapToUSDT(address tokenIn, uint256 amountIn, address router, bytes swapCalldata, uint256 minUsdtOut)",
     "function withdrawV2(address tokenAddress)",
+    "function treasurySplitter() view returns (address)",
+    "function withdrawToTreasury(address token, uint256 amount, address router, bytes swapCalldata, uint256 minUsdtOut) returns (uint256)",
 ];
+
 
 function isBsc(route: SwapRoute): boolean {
     return route.chainId === BSC_CHAIN_ID;
@@ -77,6 +93,100 @@ export async function swapMarketFees(market: MarketInstance, route: SwapRoute, h
     const contract = new Contract(market.address, MARKET_ABI, signer);
     const args = [route.tokenIn, q.amountIn, router, calldata, q.minOut];
     const tx = await contract.swapToUSDT(...args, {gasLimit: await swapGasLimit(contract.swapToUSDT, args)});
+    await tx.wait();
+    return tx.hash;
+}
+
+// --- four-leg distribution (withdrawToTreasury) ---
+
+export interface DistributionInfo extends SplitterView {
+    fees: bigint;
+    decimalsIn: number;
+    marketUsdt: bigint;
+    decimalsUsdt: number;
+    splitter: string | null; // null when the market has no splitter wired yet
+}
+
+export async function readMarketDistribution(market: MarketInstance, route: SwapRoute): Promise<DistributionInfo> {
+    const p = readProvider(market.chainId);
+    const contract = new Contract(market.address, MARKET_ABI, p);
+    const tokenIn = new Contract(route.tokenIn, ERC20_ABI, p);
+    const usdt = new Contract(route.tokenOut, ERC20_ABI, p);
+
+    const [fees, decIn, marketUsdt, decUsdt, splitterAddr] = await Promise.all([
+        tokenIn.balanceOf(market.address),
+        tokenIn.decimals(),
+        usdt.balanceOf(market.address),
+        usdt.decimals(),
+        contract.treasurySplitter(),
+    ]);
+
+    const base = {
+        fees,
+        decimalsIn: Number(decIn),
+        marketUsdt,
+        decimalsUsdt: Number(decUsdt),
+        splitter: null as string | null,
+        split: null,
+        treasuries: null,
+        balances: null,
+        usdtConfigured: false,
+        routerAllowed: false,
+    };
+    if (splitterAddr === ZeroAddress) return base;
+
+    const view = await readSplitterView(
+        market.chainId, splitterAddr, market.address, routerOf(route), route.tokenIn, route.tokenOut,
+    );
+    return {...base, splitter: splitterAddr, ...view};
+}
+
+// Quote the *dev leg only* — quoting the full amount would show a price for tokens that never reach
+// a router. Returns a null quote when devBps is 0, which is a legitimate config with no swap at all.
+export async function quoteDistribution(
+    route: SwapRoute,
+    humanAmount: string,
+    slippageBps: number,
+    split: MarketSplit,
+    decimalsIn: number,
+): Promise<{legs: Legs; quote: Quote | null}> {
+    const amount = parseUnits(humanAmount, decimalsIn);
+    if (amount <= 0n) throw new Error("Số lượng phải > 0");
+    const legs = computeLegs(amount, split);
+    if (split.devBps === 0) return {legs, quote: null};
+    return {legs, quote: await quote(route, formatUnits(legs.dev, decimalsIn), slippageBps)};
+}
+
+// One transaction, four legs. The router calldata's recipient is the market, so the swapped USDT
+// lands back in the market — that is also how the splitter measures usdtOut.
+export async function distributeMarketFees(
+    market: MarketInstance,
+    route: SwapRoute,
+    humanAmount: string,
+    slippageBps: number,
+    split: MarketSplit,
+    decimalsIn: number,
+): Promise<string> {
+    const amount = parseUnits(humanAmount, decimalsIn);
+    const legs = computeLegs(amount, split);
+
+    let router = ZeroAddress;
+    let calldata = "0x";
+    let minOut = 0n;
+    if (split.devBps > 0) {
+        const q = await quote(route, formatUnits(legs.dev, decimalsIn), slippageBps);
+        const built = isBsc(route)
+            ? buildSmartRouterCalldata(q.trade, market.address, slippageBps)
+            : buildPolygonCalldata(route, q.amountIn, q.minOut, market.address);
+        router = built.router;
+        calldata = built.calldata;
+        minOut = q.minOut;
+    }
+
+    const signer = await walletSigner(market.chainId);
+    const contract = new Contract(market.address, MARKET_ABI, signer);
+    const args = [route.tokenIn, amount, router, calldata, minOut];
+    const tx = await contract.withdrawToTreasury(...args, {gasLimit: await swapGasLimit(contract.withdrawToTreasury, args)});
     await tx.wait();
     return tx.hash;
 }

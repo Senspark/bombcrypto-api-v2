@@ -2,13 +2,12 @@
 import {computed, ref} from "vue";
 import {shortAddr} from "../format";
 import {BHEROS, BSC_CHAIN_ID, CHAINS, routesFor, type BHeroSInstance} from "./config";
-import {connect} from "../treasury/wallet";
+import {walletAccount} from "../treasury/wallet";
+import WalletToolbar from "../treasury/WalletToolbar.vue";
 import BHeroSCard from "./BHeroSCard.vue";
+import DistributeCard from "./DistributeCard.vue";
 import WithdrawBHeroSPanel from "./WithdrawBHeroSPanel.vue";
 
-const owner = ref<string | null>(null);
-const connecting = ref(false);
-const err = ref("");
 const panels = ref<Record<string, InstanceType<typeof WithdrawBHeroSPanel> | null>>({});
 
 // Single group (only one BHeroS instance per chain, unlike Market's 2 labels) split into a BSC
@@ -17,38 +16,21 @@ const chains = computed(() => {
     return [...BHEROS].sort((a, b) => (a.chainId === BSC_CHAIN_ID ? -1 : 1) - (b.chainId === BSC_CHAIN_ID ? -1 : 1));
 });
 
-async function onConnect() {
-    err.value = "";
-    connecting.value = true;
-    try {
-        owner.value = await connect();
-    } catch (e) {
-        err.value = e instanceof Error ? e.message : String(e);
-    } finally {
-        connecting.value = false;
-    }
-}
-
 function onSwapped(instanceId: string) {
     panels.value[instanceId]?.load();
 }
 </script>
 
 <template>
-    <div class="toolbar">
-        <button v-if="!owner" class="btn" :disabled="connecting" @click="onConnect">
-            {{ connecting ? "..." : "Kết nối ví manager" }}
-        </button>
-        <span v-else class="muted mono">Ví: {{ shortAddr(owner) }}</span>
-    </div>
+    <WalletToolbar/>
 
     <p class="muted">
-        Manager (WITHDRAWER_ROLE) bấm swap: contract tự đổi phí Hero sale (toàn bộ balance
-        bcoinToken/senToken, không có bookkeeping riêng) thành USDT giữ trong contract, rồi rút hết
-        bằng <span class="mono">withdrawCustomToken</span>. Ví phải có WITHDRAWER_ROLE trên BHeroS
-        contract, cần BNB/POL trả gas.
+        Manager (WITHDRAWER_ROLE) chia phí Hero sale 4 chân trong một tx: community / marketing / burn
+        chuyển thẳng sang 3 treasury, phần dev swap ra USDT và ở lại contract, rút bằng
+        <span class="mono">withdrawCustomToken</span>. Chain chưa upgrade vẫn giữ nút swap cũ
+        (<span class="mono">swapToUSDT</span>). Toàn bộ balance là phí — BHeroS không giữ tiền của
+        người dùng. Ví phải có WITHDRAWER_ROLE, cần BNB/POL trả gas.
     </p>
-    <div v-if="err" class="error">{{ err }}</div>
 
     <div class="chain-grid">
         <div
@@ -59,13 +41,16 @@ function onSwapped(instanceId: string) {
                 <span class="chip" :class="instance.chainId === BSC_CHAIN_ID ? 'chip-bsc' : 'chip-polygon'">{{ CHAINS[instance.chainId].name }}</span>
                 <a class="mono" :href="CHAINS[instance.chainId].explorerAddress + instance.address" target="_blank" rel="noreferrer">{{ shortAddr(instance.address) }}</a>
             </h3>
-            <BHeroSCard
-                v-for="r in routesFor(instance)" :key="r.id" :instance="instance" :route="r" :owner="owner"
-                @swapped="onSwapped(instance.id)"
-            />
+            <template v-for="r in routesFor(instance)" :key="r.id">
+                <DistributeCard
+                    v-if="instance.distributes" :instance="instance" :route="r" :owner="walletAccount"
+                    @changed="onSwapped(instance.id)"
+                />
+                <BHeroSCard v-else :instance="instance" :route="r" :owner="walletAccount" @swapped="onSwapped(instance.id)"/>
+            </template>
             <WithdrawBHeroSPanel
                 :ref="(el) => (panels[instance.id] = el as any)"
-                :instance="instance" :usdt-address="routesFor(instance)[0].tokenOut" :owner="owner"
+                :instance="instance" :usdt-address="routesFor(instance)[0].tokenOut" :owner="walletAccount"
             />
         </div>
     </div>

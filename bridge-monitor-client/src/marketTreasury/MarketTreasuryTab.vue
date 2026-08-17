@@ -2,13 +2,12 @@
 import {computed, ref} from "vue";
 import {shortAddr} from "../format";
 import {BSC_CHAIN_ID, CHAINS, MARKETS, POLYGON_CHAIN_ID, routesFor, type MarketInstance} from "./config";
-import {connect} from "../treasury/wallet";
+import {walletAccount} from "../treasury/wallet";
+import WalletToolbar from "../treasury/WalletToolbar.vue";
 import MarketCard from "./MarketCard.vue";
+import DistributeCard from "./DistributeCard.vue";
 import WithdrawMarketPanel from "./WithdrawMarketPanel.vue";
 
-const owner = ref<string | null>(null);
-const connecting = ref(false);
-const err = ref("");
 const panels = ref<Record<string, InstanceType<typeof WithdrawMarketPanel> | null>>({});
 
 // Two clearly separated blocks (BHeroMarket / BHouseMarket), each split into a BSC column and a
@@ -22,38 +21,19 @@ const marketGroups = computed(() => {
     }));
 });
 
-async function onConnect() {
-    err.value = "";
-    connecting.value = true;
-    try {
-        owner.value = await connect();
-    } catch (e) {
-        err.value = e instanceof Error ? e.message : String(e);
-    } finally {
-        connecting.value = false;
-    }
-}
-
 function onSwapped(marketId: string) {
     panels.value[marketId]?.load();
 }
 </script>
 
 <template>
-    <div class="toolbar">
-        <button v-if="!owner" class="btn" :disabled="connecting" @click="onConnect">
-            {{ connecting ? "..." : "Kết nối ví manager" }}
-        </button>
-        <span v-else class="muted mono">Ví: {{ shortAddr(owner) }}</span>
-    </div>
+    <WalletToolbar/>
 
     <p class="muted">
-        Manager (WITHDRAWER_ROLE) bấm swap: contract tự đổi phí marketplace (toàn bộ balance token,
-        không có bookkeeping riêng) thành USDT giữ trong contract, rồi rút hết bằng
-        <span class="mono">withdrawV2</span>. Ví phải có WITHDRAWER_ROLE trên market contract, cần
-        BNB/POL trả gas.
+        Manager (WITHDRAWER_ROLE) bấm swap: contract tự đổi phí marketplace thành USDT giữ trong
+        contract, rồi rút hết bằng <span class="mono">withdrawV2</span> — market hưởng 100% phần phí,
+        không chia về treasury. Ví phải có WITHDRAWER_ROLE trên market contract, cần BNB/POL trả gas.
     </p>
-    <div v-if="err" class="error">{{ err }}</div>
 
     <section v-for="g in marketGroups" :key="g.label" class="market-group">
         <h2 class="market-title">{{ g.label }}</h2>
@@ -63,13 +43,16 @@ function onSwapped(marketId: string) {
                     <span class="chip chip-bsc">{{ CHAINS[g.bsc.chainId].name }}</span>
                     <a class="mono" :href="CHAINS[g.bsc.chainId].explorerAddress + g.bsc.address" target="_blank" rel="noreferrer">{{ shortAddr(g.bsc.address) }}</a>
                 </h3>
-                <MarketCard
-                    v-for="r in routesFor(g.bsc)" :key="r.id" :market="g.bsc" :route="r" :owner="owner"
-                    @swapped="onSwapped(g.bsc.id)"
-                />
+                <template v-for="r in routesFor(g.bsc)" :key="r.id">
+                    <DistributeCard
+                        v-if="g.bsc.distributes" :market="g.bsc" :route="r" :owner="walletAccount"
+                        @changed="onSwapped(g.bsc.id)"
+                    />
+                    <MarketCard v-else :market="g.bsc" :route="r" :owner="walletAccount" @swapped="onSwapped(g.bsc.id)"/>
+                </template>
                 <WithdrawMarketPanel
                     :ref="(el) => (panels[g.bsc.id] = el as any)"
-                    :market="g.bsc" :usdt-address="routesFor(g.bsc)[0].tokenOut" :owner="owner"
+                    :market="g.bsc" :usdt-address="routesFor(g.bsc)[0].tokenOut" :owner="walletAccount"
                 />
             </div>
             <div class="chain-col chain-col-polygon">
@@ -77,13 +60,16 @@ function onSwapped(marketId: string) {
                     <span class="chip chip-polygon">{{ CHAINS[g.polygon.chainId].name }}</span>
                     <a class="mono" :href="CHAINS[g.polygon.chainId].explorerAddress + g.polygon.address" target="_blank" rel="noreferrer">{{ shortAddr(g.polygon.address) }}</a>
                 </h3>
-                <MarketCard
-                    v-for="r in routesFor(g.polygon)" :key="r.id" :market="g.polygon" :route="r" :owner="owner"
-                    @swapped="onSwapped(g.polygon.id)"
-                />
+                <template v-for="r in routesFor(g.polygon)" :key="r.id">
+                    <DistributeCard
+                        v-if="g.polygon.distributes" :market="g.polygon" :route="r" :owner="walletAccount"
+                        @changed="onSwapped(g.polygon.id)"
+                    />
+                    <MarketCard v-else :market="g.polygon" :route="r" :owner="walletAccount" @swapped="onSwapped(g.polygon.id)"/>
+                </template>
                 <WithdrawMarketPanel
                     :ref="(el) => (panels[g.polygon.id] = el as any)"
-                    :market="g.polygon" :usdt-address="routesFor(g.polygon)[0].tokenOut" :owner="owner"
+                    :market="g.polygon" :usdt-address="routesFor(g.polygon)[0].tokenOut" :owner="walletAccount"
                 />
             </div>
         </div>
