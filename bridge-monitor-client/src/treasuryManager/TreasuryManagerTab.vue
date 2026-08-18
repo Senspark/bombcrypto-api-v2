@@ -78,8 +78,9 @@ async function onLogout() {
         <p class="muted">
             Backend giữ ví manager (WITHDRAWER_ROLE) và tự gọi
             <span class="mono">swapToUSDT</span> theo lịch: mỗi chu kỳ swap một lượng cố định, cộng dồn
-            tới mức tối đa thì tự dừng. USDT nằm lại trong contract — rút vẫn phải bấm tay ở các tab
-            Market / BHeroS.
+            tới mức tối đa thì tự dừng. USDT nằm lại trong contract — rút vẫn phải bấm tay ở tab
+            Market Treasury. Chỉ 4 market chạy ở đây; BHeroS và BHeroStake chia phí qua splitter,
+            thao tác ở tab của chúng.
         </p>
         <div v-if="err" class="error">{{ err }}</div>
 
