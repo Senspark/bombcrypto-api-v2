@@ -2,7 +2,10 @@
 // BHeroS, BHeroStake). Deliberately one copy: the leg amounts here must match what
 // TreasurySplitter.distribute computes on-chain, and three drifting copies of that rounding is the
 // exact failure the on-chain design avoided by keeping ratios in one contract.
-import {Contract} from "ethers";
+//
+// All four legs are plain transfers of the fee token. The dev share goes to TreasuryDev, where it is
+// swapped to USDT separately from the "Treasury Dev" tab — nothing on this path touches a router.
+import {Contract, ZeroAddress} from "ethers";
 import {readProvider} from "./wallet";
 import {ERC20_ABI} from "./types";
 
@@ -10,8 +13,7 @@ export const SPLITTER_ABI = [
     "function communityTreasury() view returns (address)",
     "function marketingTreasury() view returns (address)",
     "function burnTreasury() view returns (address)",
-    "function usdtToken() view returns (address)",
-    "function routerAllowed(address) view returns (bool)",
+    "function devTreasury() view returns (address)",
     "function splitOf(address) view returns (uint16 communityBps, uint16 devBps, uint16 marketingBps, uint16 burnBps, bool set)",
 ];
 
@@ -34,15 +36,14 @@ export interface Treasuries {
     community: string;
     marketing: string;
     burn: string;
+    dev: string; // ZeroAddress until setDevTreasury has been run on this chain
 }
 
 export interface SplitterView {
     split: SourceSplit | null; // null when the splitter has no ratios for this source
     treasuries: Treasuries | null;
     // Each treasury's balance of the fee token asked about, not its whole holdings.
-    balances: {community: bigint; marketing: bigint; burn: bigint} | null;
-    usdtConfigured: boolean;
-    routerAllowed: boolean;
+    balances: {community: bigint; marketing: bigint; burn: bigint; dev: bigint} | null;
 }
 
 // Mirrors TreasurySplitter.distribute: the three shares are floored and the dev leg takes the
@@ -58,27 +59,25 @@ export async function readSplitterView(
     chainId: number,
     splitterAddress: string,
     sourceAddress: string,
-    routerAddress: string,
     feeTokenAddress: string,
-    usdtAddress: string,
 ): Promise<SplitterView> {
     const p = readProvider(chainId);
     const splitter = new Contract(splitterAddress, SPLITTER_ABI, p);
     const feeToken = new Contract(feeTokenAddress, ERC20_ABI, p);
 
-    const [community, marketing, burn, configuredUsdt, routerAllowed, rawSplit] = await Promise.all([
+    const [community, marketing, burn, dev, rawSplit] = await Promise.all([
         splitter.communityTreasury(),
         splitter.marketingTreasury(),
         splitter.burnTreasury(),
-        splitter.usdtToken(),
-        splitter.routerAllowed(routerAddress),
+        splitter.devTreasury(),
         splitter.splitOf(sourceAddress),
     ]);
 
-    const [cBal, mBal, bBal] = await Promise.all([
+    const [cBal, mBal, bBal, dBal] = await Promise.all([
         feeToken.balanceOf(community),
         feeToken.balanceOf(marketing),
         feeToken.balanceOf(burn),
+        dev === ZeroAddress ? Promise.resolve(0n) : feeToken.balanceOf(dev),
     ]);
 
     return {
@@ -91,25 +90,23 @@ export async function readSplitterView(
                   set: true,
               }
             : null,
-        treasuries: {community, marketing, burn},
-        balances: {community: cBal, marketing: mBal, burn: bBal},
-        usdtConfigured: configuredUsdt.toLowerCase() === usdtAddress.toLowerCase(),
-        routerAllowed,
+        treasuries: {community, marketing, burn, dev},
+        balances: {community: cBal, marketing: mBal, burn: bBal, dev: dBal},
     };
 }
 
-// The four readiness conditions, each with its own message — "chưa cấu hình" on its own is the kind
-// of thing that wastes an afternoon.
+// The readiness conditions, each with its own message — "chưa cấu hình" on its own is the kind of
+// thing that wastes an afternoon.
 export function splitterBlockers(
     splitter: string | null,
-    view: Pick<SplitterView, "split" | "usdtConfigured" | "routerAllowed"> | null,
-    usdtSymbol: string,
+    view: Pick<SplitterView, "split" | "treasuries"> | null,
 ): string[] {
     if (!splitter) return ["Contract chưa trỏ tới splitter — chạy setTreasurySplitter trên contract."];
     if (!view) return [];
     const out: string[] = [];
     if (!view.split) out.push("Splitter chưa có tỉ lệ cho contract này — chạy setSplit trên splitter.");
-    if (!view.usdtConfigured) out.push(`Splitter chưa set usdtToken khớp ${usdtSymbol}.`);
-    if (!view.routerAllowed) out.push("Router của route này chưa được whitelist trên splitter.");
+    if (view.split && view.split.devBps > 0 && view.treasuries?.dev === ZeroAddress) {
+        out.push("Splitter chưa set devTreasury — chạy deploy-treasury-dev.js.");
+    }
     return out;
 }

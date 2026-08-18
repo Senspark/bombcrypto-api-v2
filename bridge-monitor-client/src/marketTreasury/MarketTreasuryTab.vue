@@ -5,7 +5,6 @@ import {BSC_CHAIN_ID, CHAINS, MARKETS, POLYGON_CHAIN_ID, routesFor, type MarketI
 import {walletAccount} from "../treasury/wallet";
 import WalletToolbar from "../treasury/WalletToolbar.vue";
 import MarketCard from "./MarketCard.vue";
-import DistributeCard from "./DistributeCard.vue";
 import WithdrawMarketPanel from "./WithdrawMarketPanel.vue";
 
 const panels = ref<Record<string, InstanceType<typeof WithdrawMarketPanel> | null>>({});
@@ -43,13 +42,10 @@ function onSwapped(marketId: string) {
                     <span class="chip chip-bsc">{{ CHAINS[g.bsc.chainId].name }}</span>
                     <a class="mono" :href="CHAINS[g.bsc.chainId].explorerAddress + g.bsc.address" target="_blank" rel="noreferrer">{{ shortAddr(g.bsc.address) }}</a>
                 </h3>
-                <template v-for="r in routesFor(g.bsc)" :key="r.id">
-                    <DistributeCard
-                        v-if="g.bsc.distributes" :market="g.bsc" :route="r" :owner="walletAccount"
-                        @changed="onSwapped(g.bsc.id)"
-                    />
-                    <MarketCard v-else :market="g.bsc" :route="r" :owner="walletAccount" @swapped="onSwapped(g.bsc.id)"/>
-                </template>
+                <MarketCard
+                    v-for="r in routesFor(g.bsc)" :key="r.id"
+                    :market="g.bsc" :route="r" :owner="walletAccount" @swapped="onSwapped(g.bsc.id)"
+                />
                 <WithdrawMarketPanel
                     :ref="(el) => (panels[g.bsc.id] = el as any)"
                     :market="g.bsc" :usdt-address="routesFor(g.bsc)[0].tokenOut" :owner="walletAccount"
@@ -60,13 +56,10 @@ function onSwapped(marketId: string) {
                     <span class="chip chip-polygon">{{ CHAINS[g.polygon.chainId].name }}</span>
                     <a class="mono" :href="CHAINS[g.polygon.chainId].explorerAddress + g.polygon.address" target="_blank" rel="noreferrer">{{ shortAddr(g.polygon.address) }}</a>
                 </h3>
-                <template v-for="r in routesFor(g.polygon)" :key="r.id">
-                    <DistributeCard
-                        v-if="g.polygon.distributes" :market="g.polygon" :route="r" :owner="walletAccount"
-                        @changed="onSwapped(g.polygon.id)"
-                    />
-                    <MarketCard v-else :market="g.polygon" :route="r" :owner="walletAccount" @swapped="onSwapped(g.polygon.id)"/>
-                </template>
+                <MarketCard
+                    v-for="r in routesFor(g.polygon)" :key="r.id"
+                    :market="g.polygon" :route="r" :owner="walletAccount" @swapped="onSwapped(g.polygon.id)"
+                />
                 <WithdrawMarketPanel
                     :ref="(el) => (panels[g.polygon.id] = el as any)"
                     :market="g.polygon" :usdt-address="routesFor(g.polygon)[0].tokenOut" :owner="walletAccount"

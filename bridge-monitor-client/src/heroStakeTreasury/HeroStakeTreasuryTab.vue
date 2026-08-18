@@ -26,8 +26,9 @@ function onChanged(instanceId: string) {
         Khác mọi tab treasury còn lại: BHeroStake giữ tiền gốc của staker. Chỉ phần đã vào sổ phí
         unstake (<span class="mono">withdrawFeeAmountsV2</span>) mới chia được — contract revert
         <span class="mono">Exceeds fee</span> nếu vượt, nên mỗi card hiện rõ sổ phí và tiền gốc tách
-        riêng, và nút MAX lấy theo sổ chứ không theo số dư. Phần dev sau khi swap được ghi có lại vào
-        sổ USDT, nhờ vậy mới rút ra được. Ví phải có WITHDRAWER_ROLE, cần BNB/POL trả gas.
+        riêng, và nút MAX lấy theo sổ chứ không theo số dư. Phần dev chuyển sang Treasury Dev dưới dạng
+        token phí và đổi sang USDT ở tab đó. Số USDT còn trong sổ là của những lần chia trước khi có
+        Treasury Dev, vẫn rút được. Ví phải có WITHDRAWER_ROLE, cần BNB/POL trả gas.
     </p>
 
     <div class="chain-grid">

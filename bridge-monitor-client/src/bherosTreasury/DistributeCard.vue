@@ -5,21 +5,18 @@ import {computed, ref, watch} from "vue";
 import {formatUnits} from "ethers";
 import {CHAINS, type BHeroSInstance, type SwapRoute} from "./config";
 import {
-    distributeBHeroSFees, quoteBHeroSDistribution, readBHeroSDistribution,
+    distributeBHeroSFees, previewBHeroSDistribution, readBHeroSDistribution,
     type BHeroSDistributionInfo, type Legs,
 } from "./treasury";
 import {shortAddr} from "../format";
 import {splitterBlockers} from "../treasury/splitter";
-import type {Quote} from "../treasury/types";
 
 const props = defineProps<{instance: BHeroSInstance; route: SwapRoute; owner: string | null}>();
 const emit = defineEmits<{(e: "changed"): void}>();
 
 const info = ref<BHeroSDistributionInfo | null>(null);
 const amount = ref("");
-const slippagePct = ref("1");
 const legs = ref<Legs | null>(null);
-const q = ref<Quote | null>(null);
 const busy = ref(false);
 const status = ref("");
 const txHash = ref("");
@@ -32,37 +29,25 @@ async function loadInfo() {
 watch(() => props.owner, () => void loadInfo().catch(() => {}), {immediate: true});
 
 const blockers = computed<string[]>(() =>
-    info.value ? splitterBlockers(info.value.splitter, info.value, props.route.tokenOutSymbol) : [],
+    info.value ? splitterBlockers(info.value.splitter, info.value) : [],
 );
 const ready = computed(() => info.value !== null && blockers.value.length === 0);
 const split = computed(() => info.value?.split ?? null);
-
-function slippageBps(): number {
-    const pct = parseFloat(slippagePct.value);
-    if (isNaN(pct) || pct < 0) return 100;
-    return Math.round(pct * 100);
-}
 
 function setMax() {
     if (info.value) amount.value = formatUnits(info.value.fees, info.value.decimalsIn);
 }
 
-async function onPreview() {
+function onPreview() {
     err.value = "";
     legs.value = null;
-    q.value = null;
     txHash.value = "";
     status.value = "";
     if (!info.value || !split.value) return;
-    busy.value = true;
     try {
-        const r = await quoteBHeroSDistribution(props.route, amount.value.trim(), slippageBps(), split.value, info.value.decimalsIn);
-        legs.value = r.legs;
-        q.value = r.quote;
+        legs.value = previewBHeroSDistribution(amount.value.trim(), split.value, info.value.decimalsIn);
     } catch (e) {
         err.value = e instanceof Error ? e.message : String(e);
-    } finally {
-        busy.value = false;
     }
 }
 
@@ -74,11 +59,10 @@ async function onDistribute() {
     busy.value = true;
     try {
         txHash.value = await distributeBHeroSFees(
-            props.instance, props.route, amount.value.trim(), slippageBps(), split.value, info.value.decimalsIn,
+            props.instance, props.route, amount.value.trim(), info.value.decimalsIn,
         );
-        status.value = "Xong — 3 treasury đã nhận, phần dev đã swap và ở lại contract";
+        status.value = "Xong — 4 treasury đã nhận, phần dev nằm ở Treasury Dev chờ swap";
         legs.value = null;
-        q.value = null;
         amount.value = "";
         await loadInfo().catch(() => {});
         emit("changed");
@@ -140,8 +124,8 @@ const explorerAddress = computed(() => CHAINS[props.instance.chainId].explorerAd
                 </tr>
                 <tr>
                     <td class="muted">Dev {{ pct(split.devBps) }}</td>
-                    <td class="num mono">-</td>
-                    <td class="muted">swap -&gt; {{ route.tokenOutSymbol }}, ở lại contract</td>
+                    <td class="num mono">{{ fmtIn(info.balances.dev) }}</td>
+                    <td><a class="mono" :href="explorerAddress + info.treasuries.dev" target="_blank" rel="noreferrer">{{ shortAddr(info.treasuries.dev) }}</a></td>
                 </tr>
             </tbody>
         </table>
@@ -153,9 +137,6 @@ const explorerAddress = computed(() => CHAINS[props.instance.chainId].explorerAd
                 @keyup.enter="onPreview"
             />
             <button class="btn max" :disabled="busy || !info || info.fees === 0n" @click="setMax">MAX</button>
-            <label class="muted">Slippage %
-                <input v-model="slippagePct" type="text" inputmode="decimal" class="slip" :disabled="busy"/>
-            </label>
             <button class="btn" :disabled="busy || !owner || !ready || !amount.trim()" @click="onPreview">Xem trước</button>
         </div>
 
@@ -175,26 +156,8 @@ const explorerAddress = computed(() => CHAINS[props.instance.chainId].explorerAd
                         <td class="num mono">{{ fmtIn(legs.burn) }} {{ route.tokenInSymbol }}</td>
                     </tr>
                     <tr>
-                        <td class="muted">Dev {{ pct(split.devBps) }} (swap)</td>
+                        <td class="muted">Dev {{ pct(split.devBps) }} (-&gt; Treasury Dev)</td>
                         <td class="num mono">{{ fmtIn(legs.dev) }} {{ route.tokenInSymbol }}</td>
-                    </tr>
-                    <template v-if="q">
-                        <tr v-if="q.routeLabel">
-                            <td class="muted">Route</td>
-                            <td class="num mono">{{ q.routeLabel }}</td>
-                        </tr>
-                        <tr>
-                            <td class="muted">Dev dự kiến nhận</td>
-                            <td class="num mono">{{ fmtOut(q.expectedOut) }} {{ route.tokenOutSymbol }}</td>
-                        </tr>
-                        <tr>
-                            <td class="muted">Dev tối thiểu ({{ (q.slippageBps / 100).toFixed(2) }}%)</td>
-                            <td class="num mono">{{ fmtOut(q.minOut) }} {{ route.tokenOutSymbol }}</td>
-                        </tr>
-                    </template>
-                    <tr v-else>
-                        <td class="muted">Swap</td>
-                        <td class="num muted">devBps = 0, không swap</td>
                     </tr>
                 </tbody>
             </table>
@@ -249,11 +212,6 @@ const explorerAddress = computed(() => CHAINS[props.instance.chainId].explorerAd
 
 .max {
     padding: 6px 10px;
-}
-
-.slip {
-    width: 60px;
-    margin-left: 6px;
 }
 
 .quote {

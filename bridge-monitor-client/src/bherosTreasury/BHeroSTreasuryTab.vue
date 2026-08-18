@@ -24,10 +24,10 @@ function onSwapped(instanceId: string) {
     <WalletToolbar/>
 
     <p class="muted">
-        Manager (WITHDRAWER_ROLE) chia phí Hero sale 4 chân trong một tx: community / marketing / burn
-        chuyển thẳng sang 3 treasury, phần dev swap ra USDT và ở lại contract, rút bằng
-        <span class="mono">withdrawCustomToken</span>. Toàn bộ balance là phí — BHeroS không giữ tiền
-        của người dùng. Ví phải có WITHDRAWER_ROLE, cần BNB/POL trả gas.
+        Manager (WITHDRAWER_ROLE) chia phí Hero sale 4 chân trong một tx, cả 4 đều là chuyển token
+        phí: community / marketing / burn sang 3 treasury, phần dev sang Treasury Dev — đổi sang USDT
+        là thao tác riêng ở tab Treasury Dev. Toàn bộ balance là phí — BHeroS không giữ tiền của
+        người dùng. Ví phải có WITHDRAWER_ROLE, cần BNB/POL trả gas.
     </p>
 
     <div class="chain-grid">

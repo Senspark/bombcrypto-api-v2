@@ -10,12 +10,6 @@ export interface MarketInstance {
     label: string; // "BHeroMarket" | "BHouseMarket"
     chainId: number;
     address: string;
-    // Show the four-leg distribute card instead of the old swap-to-USDT one. Off everywhere right
-    // now: the markets take 100% of their fees as the dev share, which swapToUSDT already does in one
-    // call, so routing them through the splitter would only add gas. BHouseMarket Polygon is upgraded
-    // and configured on-chain, so this is a one-line switch if the markets ever split again.
-    // Never turn it on for a proxy without withdrawToTreasury — treasurySplitter() just reverts there.
-    distributes?: boolean;
 }
 
 // Proxy addresses from docs/contract/swap-fee/market-swap-plan.md (already upgraded + configured

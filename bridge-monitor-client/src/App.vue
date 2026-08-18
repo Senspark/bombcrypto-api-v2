@@ -14,6 +14,7 @@ import StakeTreasuryTab from "./stakeTreasury/StakeTreasuryTab.vue";
 import BHeroSTreasuryTab from "./bherosTreasury/BHeroSTreasuryTab.vue";
 import HeroStakeTreasuryTab from "./heroStakeTreasury/HeroStakeTreasuryTab.vue";
 import DepositNativeTreasuryTab from "./depositNativeTreasury/DepositNativeTreasuryTab.vue";
+import DevTreasuryTab from "./devTreasury/DevTreasuryTab.vue";
 import TreasuryManagerTab from "./treasuryManager/TreasuryManagerTab.vue";
 
 // Running backend build identity. `code` is a hash of the actual running bytes — if it does NOT change after a
@@ -44,6 +45,7 @@ const tabs = [
     {key: "bheros-treasury", label: "BHeroS Treasury"},
     {key: "herostake-treasury", label: "BHeroStake Treasury"},
     {key: "deposit-native-treasury", label: "Deposit Native Treasury"},
+    {key: "dev-treasury", label: "Treasury Dev"},
     {key: "treasury-manager", label: "Auto Swap"},
 ] as const;
 
@@ -100,6 +102,7 @@ window.addEventListener("hashchange", () => {
         <BHeroSTreasuryTab v-else-if="active === 'bheros-treasury'"/>
         <HeroStakeTreasuryTab v-else-if="active === 'herostake-treasury'"/>
         <DepositNativeTreasuryTab v-else-if="active === 'deposit-native-treasury'"/>
+        <DevTreasuryTab v-else-if="active === 'dev-treasury'"/>
         <TreasuryManagerTab v-else-if="active === 'treasury-manager'"/>
     </main>
 </template>
