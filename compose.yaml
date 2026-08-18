@@ -96,3 +96,22 @@ services:
       # Bind all interfaces INSIDE the container so the forwarded port reaches the
       # process; host exposure is still loopback-only via the ports mapping above.
       HOST: '0.0.0.0'
+
+  ap-pay-rock-server:
+    build:
+      context: ./pay-rock-server
+      dockerfile: Dockerfile
+    container_name: ap-pay-rock-server
+    ports:
+      - "8110:80"
+    networks:
+      - base_default
+    env_file:
+      - path: ./pay-rock-server/.env
+        required: false
+    environment:
+      TZ: 'Asia/Bangkok'
+      PORT: 80
+      BLOCKCHAIN_API: 'http://ap-blockchain'
+      REDIS_URL: 'redis://@redis:6379/0'
+      DATABASE_URL: 'postgres://postgres:123456@postgres:5432/bombcrypto'

@@ -19,6 +19,8 @@ export interface IPreviewItem {
     status: PerTxStatusPreview;
     message?: string;
     currentRock?: number;
+    /** When an ALREADY_PAID tx was credited, ISO 8601. */
+    paidAt?: string;
 }
 
 export interface IPreviewSummary {
@@ -37,7 +39,7 @@ export interface IPreviewBody {
 
 export interface IConfirmResult {
     processed: Array<{ tx: string; network: Network; rockAmount: number; status: 'PAID' }>;
-    skipped: Array<{ tx: string; status: 'ALREADY_PAID' }>;
+    skipped: Array<{ tx: string; status: 'ALREADY_PAID'; paidAt?: string }>;
     failed: Array<{ tx: string; status: 'ERROR_DB'; message: string }>;
     summary: {
         wallet: string | null;

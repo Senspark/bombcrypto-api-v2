@@ -4,6 +4,8 @@ export interface IExistingRockTx {
     status: string;
     rockAmount: number;
     heroIds: number[];
+    /** When the row was written, ISO 8601. Null if the column is empty on a legacy row. */
+    paidAt: string | null;
 }
 
 export default interface IPayRockRepository {

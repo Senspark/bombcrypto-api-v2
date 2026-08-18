@@ -17,8 +17,8 @@ export default class PayRockRepository implements IPayRockRepository {
     }
 
     async findExistingRockTx(tx: string, network: Network): Promise<IExistingRockTx | null> {
-        const result = await this.#pg.query<{ status: string; rock_amount: number; heroes: any }>(
-            `SELECT status, rock_amount, heroes
+        const result = await this.#pg.query<{ status: string; rock_amount: number; heroes: any; timestamp: Date | null }>(
+            `SELECT status, rock_amount, heroes, "timestamp"
              FROM public.user_create_rock
              WHERE tx = $1 AND network = $2
              ORDER BY "timestamp" DESC
@@ -35,6 +35,7 @@ export default class PayRockRepository implements IPayRockRepository {
             status: row.status,
             rockAmount: Number(row.rock_amount),
             heroIds,
+            paidAt: row.timestamp ? new Date(row.timestamp).toISOString() : null,
         };
     }
 

@@ -5,7 +5,7 @@ import {motion} from 'framer-motion';
 import PayRockPreviewCard from './PayRockPreviewCard';
 import {confirmPayRock, previewPayRock} from './PayRockApi';
 import {IConfirmResult, IPreviewBody, Network} from './PayRockData';
-import {buildAdvancedFilterUrl} from './PayRockConsts';
+import {buildAdvancedFilterUrl, formatPaidAt} from './PayRockConsts';
 import './PayRockPage.css';
 
 const {Title, Text} = Typography;
@@ -225,6 +225,17 @@ const PayRockPage: React.FC = () => {
                                 <span className="payrock-rock-arrow">→</span>
                                 <span className="payrock-rock-after">{result.summary.rockAfter}</span>
                             </div>
+                        )}
+                        {result.skipped.length > 0 && (
+                            <Alert
+                                type="info"
+                                showIcon
+                                message="Already claimed"
+                                description={result.skipped
+                                    .map(s => s.paidAt ? `${s.tx}: paid at ${formatPaidAt(s.paidAt)}` : `${s.tx}: already paid`)
+                                    .join('\n')}
+                                style={{whiteSpace: 'pre-wrap'}}
+                            />
                         )}
                         {result.failed.length > 0 && (
                             <Alert
