@@ -1,11 +1,14 @@
 import {formatUnits, parseUnits} from "ethers";
 import {findInstance, findRoute} from "../consts/Consts.js";
+import {SwapError} from "../consts/ServerError.js";
 import IEnvConfig from "../services/IEnvConfig.js";
 import ILogger from "../services/ILogger.js";
 import {IScheduleStore, ScheduleConfig, ScheduleState} from "../services/ISchedule.js";
 import ISwapExecutor from "../services/ISwapExecutor.js";
 
 const LOCK_TTL_MS = 5 * 60_000;
+const RETRY_BASE_MS = 5 * 60_000;
+const MAX_CONSECUTIVE_FAILURES = 5;
 
 export default class Ticker {
     private log: ILogger;
@@ -55,7 +58,11 @@ export default class Ticker {
         const route = findRoute(config.routeId);
         if (!instance || !route) {
             this.log.error(`schedule ${config.id} references unknown instance/route — marking error`);
-            await this.store.putState(config.id, {...state, status: "error", lastError: "Unknown contract or token."});
+            await this.store.putState(config.id, {
+                ...state,
+                status: "error",
+                lastError: "Unknown contract or token.",
+            });
             return;
         }
 
@@ -88,6 +95,7 @@ export default class Ticker {
                 runCount: state.runCount + 1,
                 lastRunAt: at,
                 nextRunAt: at + config.intervalMs,
+                consecutiveFailures: 0,
                 lastError: null,
             });
             await this.store.pushRun(config.id, {
@@ -101,14 +109,35 @@ export default class Ticker {
             });
             this.log.info(`schedule ${config.id} run ${state.runCount + 1} ok, swapped total ${nextSwapped}`);
         } catch (e) {
-            // A failing schedule stops rather than burning gas on the same revert every interval.
             const reason = e instanceof Error ? e.message : String(e);
             this.log.error(`schedule ${config.id} run failed: ${reason}`);
             this.log.error(e);
+
+            // A revert has already cost gas, so repeating it every interval burns real money and the
+            // schedule stops for a human to look at. A failure that never reached the chain cost
+            // nothing, and is usually a slow RPC or price feed, so it is retried on a widening delay
+            // and only gives up once it looks permanent rather than transient.
+            const submitted = e instanceof SwapError && e.submitted;
+            const failures = state.consecutiveFailures + 1;
+            const giveUp = submitted || failures >= MAX_CONSECUTIVE_FAILURES;
+            const retryDelay = Math.min(RETRY_BASE_MS * 2 ** (failures - 1), config.intervalMs);
+
+            if (giveUp) {
+                this.log.error(
+                    `schedule ${config.id} stopped after ${failures} failure(s), submitted=${submitted}`,
+                );
+            } else {
+                this.log.info(
+                    `schedule ${config.id} retrying in ${Math.round(retryDelay / 60_000)}m (failure ${failures}/${MAX_CONSECUTIVE_FAILURES})`,
+                );
+            }
+
             await this.store.putState(config.id, {
                 ...state,
-                status: "error",
+                status: giveUp ? "error" : "active",
                 lastRunAt: at,
+                nextRunAt: giveUp ? state.nextRunAt : at + retryDelay,
+                consecutiveFailures: failures,
                 lastError: reason,
             });
             await this.store.pushRun(config.id, {

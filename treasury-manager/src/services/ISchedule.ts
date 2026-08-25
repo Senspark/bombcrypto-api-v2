@@ -22,6 +22,8 @@ export interface ScheduleState {
     runCount: number;
     lastRunAt: number | null;
     nextRunAt: number;
+    /** Failures in a row that never reached the chain. Reset by any successful run. */
+    consecutiveFailures: number;
     /** Client-safe text. The raw error only ever reaches the log. */
     lastError: string | null;
 }

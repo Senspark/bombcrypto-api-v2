@@ -1,5 +1,6 @@
 import {Contract, formatEther, parseEther, parseUnits} from "ethers";
 import {BSC_CHAIN_ID, ERC20_ABI, routerOf, SwapRoute, TREASURY_ABI, TreasuryInstance} from "../consts/Consts.js";
+import {SwapError} from "../consts/ServerError.js";
 import IEnvConfig from "../services/IEnvConfig.js";
 import ILogger from "../services/ILogger.js";
 import ISwapExecutor, {Quote, SwapResult, TreasuryReading} from "../services/ISwapExecutor.js";
@@ -45,43 +46,54 @@ export default class SwapExecutor implements ISwapExecutor {
         amountHuman: string,
         slippageBps: number,
     ): Promise<SwapResult> {
-        await this.preflight(instance, route, amountHuman);
+        // Everything up to the send costs nothing, so the caller may retry it freely. Past the send
+        // a broadcast can no longer be ruled out — a rejection there might still have reached a node,
+        // and retrying would swap twice — so the flag flips before the call, not after it resolves.
+        let submitted = false;
+        try {
+            await this.preflight(instance, route, amountHuman);
 
-        const q = await this.quote(route, amountHuman, slippageBps);
-        const {router, calldata} =
-            route.chainId === BSC_CHAIN_ID
-                ? buildSmartRouterCalldata(q.trade, instance.address, slippageBps)
-                : buildPolygonCalldata(route, q.amountIn, q.minOut, instance.address);
+            const q = await this.quote(route, amountHuman, slippageBps);
+            const {router, calldata} =
+                route.chainId === BSC_CHAIN_ID
+                    ? buildSmartRouterCalldata(q.trade, instance.address, slippageBps)
+                    : buildPolygonCalldata(route, q.amountIn, q.minOut, instance.address);
 
-        const wallet = this.clients.wallet(instance.chainId);
-        const contract = new Contract(instance.address, TREASURY_ABI, wallet);
+            const wallet = this.clients.wallet(instance.chainId);
+            const contract = new Contract(instance.address, TREASURY_ABI, wallet);
 
-        // ethers hands the node a fixed gasLimit from its own estimate, leaving no margin for the cost
-        // drifting between estimate and mining (a cold storage slot, or the router picking a longer
-        // route). Short by a few percent and the inner router call runs out, returns false, and the
-        // contract's require(ok) reverts — which stops the whole schedule. Unused gas is refunded.
-        const args = [route.tokenIn, q.amountIn, router, calldata, q.minOut];
-        const gasLimit = (await contract.swapToUSDT.estimateGas(...args)) * 2n;
+            // ethers hands the node a fixed gasLimit from its own estimate, leaving no margin for the cost
+            // drifting between estimate and mining (a cold storage slot, or the router picking a longer
+            // route). Short by a few percent and the inner router call runs out, returns false, and the
+            // contract's require(ok) reverts — which stops the whole schedule. Unused gas is refunded.
+            const args = [route.tokenIn, q.amountIn, router, calldata, q.minOut];
+            const gasLimit = (await contract.swapToUSDT.estimateGas(...args)) * 2n;
 
-        this.log.info(
-            `${instance.id}/${route.id} sending swapToUSDT amountIn=${q.amountIn} minOut=${q.minOut} router=${router} gasLimit=${gasLimit}`,
-        );
-        const tx = await contract.swapToUSDT(...args, {gasLimit});
-        this.log.info(`${instance.id}/${route.id} tx ${tx.hash} sent, waiting for receipt`);
-        const receipt = await tx.wait();
-        if (!receipt || receipt.status !== 1) {
-            throw new Error(`${instance.id}/${route.id} tx ${tx.hash} reverted`);
+            this.log.info(
+                `${instance.id}/${route.id} sending swapToUSDT amountIn=${q.amountIn} minOut=${q.minOut} router=${router} gasLimit=${gasLimit}`,
+            );
+            submitted = true;
+            const tx = await contract.swapToUSDT(...args, {gasLimit});
+            this.log.info(`${instance.id}/${route.id} tx ${tx.hash} sent, waiting for receipt`);
+            const receipt = await tx.wait();
+            if (!receipt || receipt.status !== 1) {
+                throw new Error(`${instance.id}/${route.id} tx ${tx.hash} reverted`);
+            }
+            this.log.info(`${instance.id}/${route.id} tx ${tx.hash} confirmed in block ${receipt.blockNumber}`);
+
+            return {
+                txHash: tx.hash,
+                amountIn: q.amountIn,
+                expectedOut: q.expectedOut,
+                minOut: q.minOut,
+                decimalsIn: q.decimalsIn,
+                decimalsOut: q.decimalsOut,
+            };
+        } catch (e) {
+            const reason = e instanceof Error ? e.message : String(e);
+            this.log.error(`${instance.id}/${route.id} failed ${submitted ? "after" : "before"} sending: ${reason}`);
+            throw new SwapError(reason, submitted);
         }
-        this.log.info(`${instance.id}/${route.id} tx ${tx.hash} confirmed in block ${receipt.blockNumber}`);
-
-        return {
-            txHash: tx.hash,
-            amountIn: q.amountIn,
-            expectedOut: q.expectedOut,
-            minOut: q.minOut,
-            decimalsIn: q.decimalsIn,
-            decimalsOut: q.decimalsOut,
-        };
     }
 
     quote(route: SwapRoute, amountHuman: string, slippageBps: number): Promise<Quote> {

@@ -82,6 +82,7 @@ export default function buildScheduleRouter(
                 runCount: 0,
                 lastRunAt: null,
                 nextRunAt: now,
+                consecutiveFailures: 0,
                 lastError: null,
             };
             await store.put(config, state);
@@ -100,6 +101,28 @@ export default function buildScheduleRouter(
             }
             await store.putState(entry.config.id, {...entry.state, status: "stopped", nextRunAt: 0});
             log.info(`schedule ${entry.config.id} stopped by ${res.locals.operator}`);
+            res.json({ok: true});
+        }),
+    );
+
+    // Counters are carried over untouched: a resumed schedule must keep counting towards the same cap
+    // it was already partway through.
+    router.post(
+        "/schedules/:id/resume",
+        wrap(async (req, res) => {
+            const entry = await store.get(req.params.id);
+            if (!entry) {
+                res.status(404).json({error: ClientErrors.NOT_FOUND});
+                return;
+            }
+            await store.putState(entry.config.id, {
+                ...entry.state,
+                status: "active",
+                nextRunAt: Date.now(),
+                consecutiveFailures: 0,
+                lastError: null,
+            });
+            log.info(`schedule ${entry.config.id} resumed by ${res.locals.operator}`);
             res.json({ok: true});
         }),
     );

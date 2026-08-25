@@ -29,7 +29,8 @@ export default class ScheduleStore implements IScheduleStore {
             }
             return null;
         }
-        return {config: JSON.parse(rawConfig), state: JSON.parse(rawState)};
+        // States written before consecutiveFailures existed are still in Redis without the field.
+        return {config: JSON.parse(rawConfig), state: {consecutiveFailures: 0, ...JSON.parse(rawState)}};
     }
 
     async put(config: ScheduleConfig, state: ScheduleState): Promise<void> {
