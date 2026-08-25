@@ -1,0 +1,9 @@
+[
+  {
+    "name": "example-site",
+    "repo": "https://github.com/your-org/your-site.git",
+    "branch": "main",
+    "publishDir": "/publish/example-site",
+    "url": "https://example.com"
+  }
+]

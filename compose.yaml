@@ -1,6 +1,8 @@
 networks:
   base_default:
     external: true
+  web_deployer:
+  web_builder:
 
 name: bombcrypto
 services:
@@ -115,3 +117,70 @@ services:
       BLOCKCHAIN_API: 'http://ap-blockchain'
       REDIS_URL: 'redis://@redis:6379/0'
       DATABASE_URL: 'postgres://postgres:123456@postgres:5432/bombcrypto'
+  # Holds the webhook secrets, the trigger signing key and the Slack url, and
+  # never runs a line of site code. It is the only half reachable from nginx.
+  ap-web-deployer:
+    build:
+      context: ./web-deployer
+      dockerfile: Dockerfile
+    container_name: ap-web-deployer
+    command: ["node", "dist/Receiver.js"]
+    ports:
+      - "8111:80"
+    networks:
+      - web_deployer
+      - web_builder
+    env_file:
+      - path: ./web-deployer/.env
+        required: false
+    environment:
+      TZ: 'Asia/Bangkok'
+      PORT: 80
+      SITES_FILE: '/config/sites.json'
+      BUILDER_URL: 'http://ap-web-builder:80'
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - ./web-deployer/sites.json:/config/sites.json:ro
+
+  # Runs `npm ci` and `npm run build` for every site, which is to say it executes
+  # whatever those repos contain. It therefore holds no secret worth taking: only
+  # the PUBLIC trigger key, and only the web roots it must write.
+  #
+  # It is NOT on web_deployer, so it cannot reach nginx or anything else the
+  # receiver can. Outbound internet stays open because git and npm need it.
+  ap-web-builder:
+    build:
+      context: ./web-deployer
+      dockerfile: Dockerfile
+    container_name: ap-web-builder
+    command: ["node", "dist/Builder.js"]
+    networks:
+      - web_builder
+    env_file:
+      - path: ./web-deployer/.env
+        required: false
+    environment:
+      TZ: 'Asia/Bangkok'
+      PORT: 80
+      SITES_FILE: '/config/sites.json'
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 2g
+    pids_limit: 512
+    cpus: 2.0
+    volumes:
+      - ./web-deployer/sites.json:/config/sites.json:ro
+      - web-deployer-repos:/data/repos
+      - web-deployer-logs:/data/logs
+      # One bind per site: the SAME host path must be mounted read-only into the
+      # nginx container. Uncomment and set the real web root at deploy:
+      # - /host/path/www/example-site:/publish/example-site
+
+volumes:
+  web-deployer-repos:
+  web-deployer-logs:
