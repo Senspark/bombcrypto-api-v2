@@ -29,7 +29,7 @@ export default class BuildsHandler {
                     ? 'BUILDING'
                     : history[0]?.status ?? 'IDLE';
 
-                return {...this.#registry.toPublic(site), status, history};
+                return {...this.#registry.toPublic(site), status, history, backups: this.#runner.backups(site.name)};
             }));
             const snapshot: IBuildSnapshot = {sites};
             res.sendOk(snapshot);

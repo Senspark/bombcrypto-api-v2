@@ -2,6 +2,9 @@ export interface ISite {
     name: string;
     repo: string;
     branch: string;
+    // Where a build lands. Nothing else writes here.
+    previewDir: string;
+    // Production web root. Only a deploy-branch build and a rollback write it.
     publishDir: string;
     installCmd: string[];
     buildCmd: string[];
@@ -9,6 +12,7 @@ export interface ISite {
     // Where the built site is served. Display and notifications only - nothing
     // reads it back, so it never has to agree with what nginx actually serves.
     url?: string;
+    previewUrl?: string;
 }
 
 export interface IPublicSite {
@@ -16,6 +20,7 @@ export interface IPublicSite {
     repo: string;
     branch: string;
     url?: string;
+    previewUrl?: string;
 }
 
 export default interface ISiteRegistry {

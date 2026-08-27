@@ -3,11 +3,27 @@ import Routes from "./Routes";
 import BuilderDependencies from "./BuilderDependencies";
 import TriggerHandler from "./routers/TriggerHandler";
 import BuildsHandler from "./routers/BuildsHandler";
+import PreviewHandler from "./routers/PreviewHandler";
+import RollbackHandler from "./routers/RollbackHandler";
 
 const dependencies = new BuilderDependencies();
 const logger = dependencies.logger;
 
 const triggerHandler = new TriggerHandler(
+    logger,
+    dependencies.registry,
+    dependencies.runner,
+    dependencies.triggerPublicKey,
+    dependencies.config.triggerMaxAgeMs,
+);
+const previewHandler = new PreviewHandler(
+    logger,
+    dependencies.registry,
+    dependencies.runner,
+    dependencies.triggerPublicKey,
+    dependencies.config.triggerMaxAgeMs,
+);
+const rollbackHandler = new RollbackHandler(
     logger,
     dependencies.registry,
     dependencies.runner,
@@ -26,7 +42,7 @@ try {
 
     const apiRouter = express.Router();
     app.use('/api', apiRouter);
-    Routes.setupBuilderRoutes(apiRouter, triggerHandler, buildsHandler);
+    Routes.setupBuilderRoutes(apiRouter, triggerHandler, previewHandler, rollbackHandler, buildsHandler);
 
     void dependencies.runner.reconcileInterrupted();
 

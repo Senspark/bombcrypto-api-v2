@@ -9,6 +9,8 @@ export default class BuilderConfig implements IBuilderConfig {
     reposDir: string;
     logsDir: string;
     stateFile: string;
+    backupDir: string;
+    backupKeep: number;
 
     triggerPublicKey: string;
     triggerMaxAgeMs: number;
@@ -27,6 +29,8 @@ export default class BuilderConfig implements IBuilderConfig {
             REPOS_DIR: str({default: '/data/repos'}),
             LOGS_DIR: str({default: '/data/logs'}),
             STATE_FILE: str({default: '/data/logs/state.json'}),
+            BACKUP_DIR: str({default: '/data/backup'}),
+            BACKUP_KEEP: num({default: 10}),
 
             TRIGGER_PUBLIC_KEY: str(),
             TRIGGER_MAX_AGE_MS: num({default: 60 * 1000}),
@@ -43,6 +47,8 @@ export default class BuilderConfig implements IBuilderConfig {
         this.reposDir = env.REPOS_DIR;
         this.logsDir = env.LOGS_DIR;
         this.stateFile = env.STATE_FILE;
+        this.backupDir = env.BACKUP_DIR;
+        this.backupKeep = env.BACKUP_KEEP;
 
         this.triggerPublicKey = env.TRIGGER_PUBLIC_KEY;
         this.triggerMaxAgeMs = env.TRIGGER_MAX_AGE_MS;

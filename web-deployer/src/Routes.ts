@@ -4,6 +4,10 @@ import simpleHandlers from "./routers/SimpleHandlers";
 import WebhookHandler from "./routers/WebhookHandler";
 import SitesHandler from "./routers/SitesHandler";
 import TriggerHandler from "./routers/TriggerHandler";
+import PreviewHandler from "./routers/PreviewHandler";
+import RollbackHandler from "./routers/RollbackHandler";
+import AuthHandler from "./routers/AuthHandler";
+import ReleaseHandler from "./routers/ReleaseHandler";
 import BuildsHandler from "./routers/BuildsHandler";
 import extendResponse from "./consts/ExpressExtension";
 import ILogger from "./services/ILogger";
@@ -41,13 +45,35 @@ function setupBasicRoutes(app: Express) {
     app.get('/health', simpleHandlers.healthCheckHandler);
 }
 
-function setupReceiverRoutes(router: Router, webhook: WebhookHandler, sites: SitesHandler) {
+function setupReceiverRoutes(
+    router: Router,
+    webhook: WebhookHandler,
+    sites: SitesHandler,
+    auth: AuthHandler,
+    release: ReleaseHandler,
+) {
     router.post('/hooks/:site', webhook.handle);
     router.get('/sites', sites.list);
+
+    router.post('/auth/google', auth.login);
+    router.post('/auth/logout', auth.logout);
+    router.get('/auth/me', auth.me);
+
+    // The one endpoint here that writes a production web root, and the only one
+    // that needs a signed-in operator behind it.
+    router.post('/rollback/:site', auth.require, release.rollback);
 }
 
-function setupBuilderRoutes(router: Router, trigger: TriggerHandler, builds: BuildsHandler) {
+function setupBuilderRoutes(
+    router: Router,
+    trigger: TriggerHandler,
+    preview: PreviewHandler,
+    rollback: RollbackHandler,
+    builds: BuildsHandler,
+) {
     router.post('/trigger', trigger.handle);
+    router.post('/preview', preview.handle);
+    router.post('/rollback', rollback.handle);
     router.get('/builds', builds.list);
 }
 

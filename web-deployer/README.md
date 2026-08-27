@@ -3,9 +3,25 @@
 Receives GitHub push webhooks and rebuilds the static websites they belong to.
 
 For each configured site: verify the webhook signature, check out the exact
-commit that was pushed, install, build, and publish the result into the
-directory nginx serves. The whole procedure lives here - a site repo contributes
-its source, not its deploy steps.
+commit that was pushed, install, build, and publish the result. The whole
+procedure lives here - a site repo contributes its source, not its deploy steps.
+
+**Merging is the gate.** A push to the deploy branch goes straight to
+production; there is no second button after it. What gets reviewed first is the
+pull request, built into the preview directory when a maintainer asks for it in
+a comment.
+
+```
+comment /preview on a PR  ->  build  ->  preview/  ->  the preview host
+
+merge to main             ->  build  ->  publish/  ->  the live host
+                                           |
+                                     backup/<commit>/  ->  rollback
+```
+
+Nothing copies preview into a production web root, so a pull request build has
+no path to the live site however long it sits there. Rollback restores an
+archived copy byte for byte rather than rebuilding an old commit.
 
 ## Two processes, one image
 
@@ -38,9 +54,13 @@ Receiver:
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/api/hooks/:site` | GitHub push webhook. Returns 202 and builds asynchronously. |
-| `GET`  | `/api/sites` | Sites, their status and their recent builds. |
+| `GET`  | `/api/sites` | Sites, their status and their recent deploys. Public. |
+| `POST` | `/api/auth/google` | Exchange a Google ID token for a session cookie. |
+| `POST` | `/api/auth/logout` | Drop the session. |
+| `GET`  | `/api/auth/me` | The signed-in email, or 401. |
+| `POST` | `/api/rollback/:site` | Restore an archived commit. Signed in only. |
 | `GET`  | `/health` | Health check. |
-| `GET`  | `/` | Read-only status dashboard. |
+| `GET`  | `/` | Status dashboard, public to read. |
 
 The webhook answers 401 on a bad signature, 404 on an unknown site, 502 when the
 builder cannot be reached, and 204 for anything it deliberately ignores (non-push
@@ -52,6 +72,8 @@ Builder, reachable only from the receiver's network:
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/api/trigger` | Signed build request. |
+| `POST` | `/api/preview` | Signed pull request build. |
+| `POST` | `/api/rollback` | Signed rollback request. |
 | `GET`  | `/api/builds` | Full state, error text included. |
 | `GET`  | `/health` | Health check. |
 
@@ -64,11 +86,13 @@ Builder, reachable only from the receiver's network:
 | `name` | URL segment of the webhook, and the `WEBHOOK_SECRET_<NAME>` suffix. |
 | `repo` | HTTPS clone url. Public repos only - this host has no deploy keys. |
 | `branch` | Only pushes to this branch build. |
-| `publishDir` | Directory the built site is published into. Must exist and be writable. |
+| `previewDir` | Where a pull request build is published. Must exist and be writable. |
+| `publishDir` | Production web root. Only a deploy-branch build and a rollback write here. Must exist and be writable. |
 | `installCmd` | Optional, default `npm ci`. |
 | `buildCmd` | Optional, default `npm run build`. |
 | `outputDir` | Optional, default `dist`. Must be inside the repo. |
 | `url` | Optional. Where the site is served. Used to name it in notifications; nothing reads it back. |
+| `previewUrl` | Optional. Where preview is served. Display only, same as `url`. |
 
 Commands run without a shell, so they are split on whitespace and cannot carry
 pipes, redirects or `&&`.
@@ -81,6 +105,39 @@ at all.
 `npm run keygen` prints a fresh `TRIGGER_PRIVATE_KEY` / `TRIGGER_PUBLIC_KEY`
 pair. Give the private half to the receiver only.
 
+## Signing in
+
+Rollback needs a Google account on `ALLOWED_EMAIL_DOMAIN`; the check
+is the `hd` claim, which a personal account never carries. `GOOGLE_CLIENT_ID` is
+an OAuth 2.0 Web client whose authorized JavaScript origins include wherever the
+dashboard is served from.
+
+Sessions are held in memory, so a receiver restart logs everyone out. That is
+deliberate: the half of the deployer holding the secrets has no writable volume,
+and one re-login is cheaper than giving it one.
+
+Leaving `GOOGLE_CLIENT_ID` empty disables authentication and treats every caller
+as an operator. It is for local development, it says so loudly in the log at
+startup, and it must not be how a reachable deployer runs.
+
+## Previewing a pull request
+
+A maintainer comments `/preview` on the pull request. The receiver checks
+`author_association` on the comment - `OWNER`, `MEMBER` or `COLLABORATOR` - and
+asks the builder for a build of `refs/pull/<n>/head`.
+
+`CONTRIBUTOR` is deliberately not accepted: it only means the author has had a
+pull request merged before, which is not a role.
+
+**Whoever can write that comment can run code from that pull request inside the
+builder.** `npm ci` and the build command execute repo-controlled code, and the
+head of an open pull request is code nobody has merged. Two things narrow it:
+the install runs with `--ignore-scripts`, so a dependency's lifecycle hook is
+not the easy way in; and the result reaches preview only. Neither replaces
+reading the diff before typing the comment.
+
+The webhook must be configured to deliver `issue_comment` as well as `push`.
+
 ## How a deploy runs
 
 1. Receiver verifies the GitHub signature, reads `ref`, `after`, and the
@@ -91,19 +148,38 @@ pair. Give the private half to the receiver only.
    `node_modules` as a cache).
 4. `installCmd`, then `buildCmd`.
 5. Require `outputDir/index.html`, otherwise fail without touching the live site.
-6. Publish in three passes: new fingerprinted assets first, `index.html` by
-   atomic rename, then delete what the new build no longer ships.
+6. Publish into `publishDir` in three passes: new fingerprinted assets first,
+   `index.html` by atomic rename, then delete what the new build no longer ships.
    `/.well-known/` is protected from that delete so an ACME challenge survives.
+7. Archive the output into `BACKUP_DIR/<site>/<commit>/` and prune older copies
+   beyond `BACKUP_KEEP`, never the one production is serving.
 
-Any failing step marks the deploy failed and leaves the live site alone. All
+Any failing step marks the deploy failed and leaves the live site alone. If only
+step 7 fails the deploy is still a success - production is correct; what is lost
+is the ability to roll back *to* this version, and Slack carries a warning. All
 output is captured to a file under `LOGS_DIR`.
+
+## How a rollback runs
+
+Rollback refuses unless `BACKUP_DIR/<site>/<commit>/index.html` exists, then
+publishes that archived copy the same way. Nothing new is archived: the version
+being restored is already in `backup/`, and the version being replaced was
+archived when it was built.
+
+Rollback restores static files only. If what broke is a backend the site talks
+to, rolling the site back does not help.
 
 ## Behaviour worth knowing
 
-- **One build at a time, across all sites.** Builds are short, and serialising
-  them removes any chance of two builds competing for memory on the host.
+- **One operation at a time, across all sites.** Builds are short, and
+  serialising them removes any chance of two competing for memory on the host.
 - **Bursts collapse.** A site pushed again while a build is running keeps only
-  the newest commit, so ten pushes in a row build once, not ten times.
+  the newest commit, so ten pushes in a row build once, not ten times. A branch
+  build, a pull request build and a rollback for the same site queue behind each
+  other instead; only two of the same kind collapse.
+- **A rollback with a branch build already queued is logged loudly.** That build
+  will publish after the rollback, and it may well be the fix - but it must not
+  go unnoticed.
 - **The pushed commit is what gets built.** The checkout is reset to the SHA
   from the payload, never to the branch tip.
 - **Only commits on the deploy branch publish.** A signed payload proves GitHub
@@ -114,6 +190,8 @@ output is captured to a file under `LOGS_DIR`.
   dashboard never shows a build that nothing is running.
 - **The last 20 builds per site are kept**, with the author and commit subject
   from the push payload.
+- **Publishing is `rsync --delete` into the target directory.**
+  Anything there that no build produced is removed, `/.well-known/` excepted.
 - **Error text never reaches the dashboard.** That page has no authentication
   and build output is not meant to be public; failures go to Slack and to the
   log file. The dashboard shows that a build failed, not why.
@@ -134,7 +212,11 @@ output is captured to a file under `LOGS_DIR`.
 Set `SLACK_WEBHOOK_URL` on the receiver to post every finished build to a
 channel. Leave it empty and the deployer runs silently.
 
-One message per build, when it finishes - a "building" notice would double the
+A pull request build names the preview host and links the pull request; a branch
+build and a rollback name the production host, the commit, and who was
+responsible.
+
+One message per operation, when it finishes - a "building" notice would double the
 traffic to say what the next message says anyway. The site is named by the host
 from its `url` and links to it; the short sha links to the commit on GitHub.
 `DASHBOARD_URL`, if set, is linked at the bottom of each message.
@@ -160,12 +242,13 @@ So the container is kept poor:
 - no ssh keys, no database credentials, nothing from the prod network
 - **no webhook secret, no signing key, no chat credential** - those are in the
   receiver, which does not run site code
-- the only paths it can write outside itself are the sites' `publishDir`s
+- the only paths it can write outside itself are the sites' `previewDir`s,
+  `publishDir`s and `BACKUP_DIR`
 - resource limits, so a runaway build cannot take the host with it
 
 What the split does **not** fix, and should not be mistaken for fixed:
 
-- every site's `publishDir` is mounted into the one builder, so a build for one
+- every site's directories are mounted into the one builder, so a build for one
   site can write into another site's web root
 - `node_modules` and the shared npm/yarn home survive between builds, so a build
   can leave something behind for the next one

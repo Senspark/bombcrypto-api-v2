@@ -7,11 +7,13 @@ interface ISiteFileEntry {
     name?: unknown;
     repo?: unknown;
     branch?: unknown;
+    previewDir?: unknown;
     publishDir?: unknown;
     installCmd?: unknown;
     buildCmd?: unknown;
     outputDir?: unknown;
     url?: unknown;
+    previewUrl?: unknown;
 }
 
 const DEFAULT_INSTALL_CMD = 'npm ci';
@@ -40,7 +42,7 @@ export default class SiteRegistry implements ISiteRegistry {
                 throw new Error(`duplicate site "${site.name}" in ${sitesFile}`);
             }
             this.#sites.set(site.name, site);
-            log.info(`loaded site=${site.name} repo=${site.repo} branch=${site.branch} publishDir=${site.publishDir} build="${site.buildCmd.join(' ')}" out=${site.outputDir}`);
+            log.info(`loaded site=${site.name} repo=${site.repo} branch=${site.branch} previewDir=${site.previewDir} publishDir=${site.publishDir} build="${site.buildCmd.join(' ')}" out=${site.outputDir}`);
         }
 
         if (this.#sites.size === 0) {
@@ -57,7 +59,7 @@ export default class SiteRegistry implements ISiteRegistry {
     }
 
     toPublic(site: ISite): IPublicSite {
-        return {name: site.name, repo: site.repo, branch: site.branch, url: site.url};
+        return {name: site.name, repo: site.repo, branch: site.branch, url: site.url, previewUrl: site.previewUrl};
     }
 
     #parseEntry(raw: ISiteFileEntry): ISite {
@@ -71,9 +73,16 @@ export default class SiteRegistry implements ISiteRegistry {
             throw new Error(`site "${name}" repo must be an https url (no ssh keys on this host)`);
         }
 
-        const url = this.#optionalString(raw.url, `${name}.url`);
-        if (url !== undefined && !url.startsWith('https://')) {
-            throw new Error(`site "${name}" url must be an https url`);
+        const url = this.#requireHttps(raw.url, `${name}.url`);
+        const previewUrl = this.#requireHttps(raw.previewUrl, `${name}.previewUrl`);
+
+        const previewDir = this.#requireString(raw.previewDir, `${name}.previewDir`);
+        const publishDir = this.#requireString(raw.publishDir, `${name}.publishDir`);
+        // A typo making them the same directory would publish straight to
+        // production and into preview at once, so a pull request build and the
+        // live site would overwrite each other.
+        if (previewDir === publishDir) {
+            throw new Error(`site "${name}" previewDir and publishDir must be different directories`);
         }
 
         const outputDir = this.#optionalString(raw.outputDir, `${name}.outputDir`) ?? DEFAULT_OUTPUT_DIR;
@@ -85,12 +94,22 @@ export default class SiteRegistry implements ISiteRegistry {
             name,
             repo,
             branch: this.#requireString(raw.branch, `${name}.branch`),
-            publishDir: this.#requireString(raw.publishDir, `${name}.publishDir`),
+            previewDir,
+            publishDir,
             installCmd: this.#parseCommand(raw.installCmd, `${name}.installCmd`, DEFAULT_INSTALL_CMD),
             buildCmd: this.#parseCommand(raw.buildCmd, `${name}.buildCmd`, DEFAULT_BUILD_CMD),
             outputDir,
             url,
+            previewUrl,
         };
+    }
+
+    #requireHttps(value: unknown, field: string): string | undefined {
+        const parsed = this.#optionalString(value, field);
+        if (parsed !== undefined && !parsed.startsWith('https://')) {
+            throw new Error(`site field "${field}" must be an https url`);
+        }
+        return parsed;
     }
 
     // Commands run without a shell, so they are a plain argv split - no pipes,

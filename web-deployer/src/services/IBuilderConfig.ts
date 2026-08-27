@@ -5,6 +5,8 @@ export default interface IBuilderConfig {
     reposDir: string;
     logsDir: string;
     stateFile: string;
+    backupDir: string;
+    backupKeep: number;
 
     triggerPublicKey: string;
     triggerMaxAgeMs: number;

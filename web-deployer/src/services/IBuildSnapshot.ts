@@ -6,8 +6,11 @@ export interface IBuildSiteState {
     repo: string;
     branch: string;
     url?: string;
+    previewUrl?: string;
     status: DeployStatus;
     history: IDeployState[];
+    // Commits that can still be rolled back to, newest first.
+    backups: string[];
 }
 
 export interface IBuildSnapshot {

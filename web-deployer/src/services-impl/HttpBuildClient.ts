@@ -20,17 +20,31 @@ export default class HttpBuildClient implements IBuildClient {
     }
 
     async trigger(siteName: string, commit: string, meta: IDeployMeta): Promise<void> {
-        // The signature covers these exact bytes, so the same buffer is both
-        // signed and sent - re-serialising would invalidate it.
-        const body = Buffer.from(JSON.stringify({
+        await this.#post('trigger', {
             site: siteName,
             commit,
             author: meta.author,
             commitMessage: meta.commitMessage,
-            issuedAt: Date.now(),
-        }));
+        });
+        this.#logger.info(`site=${siteName} commit=${commit} accepted by builder`);
+    }
 
-        const res = await fetch(`${this.#baseUrl}/api/trigger`, {
+    async previewPr(siteName: string, prNumber: number, actor: string): Promise<void> {
+        await this.#post('preview', {site: siteName, prNumber, actor});
+        this.#logger.info(`site=${siteName} preview of PR #${prNumber} by ${actor} accepted by builder`);
+    }
+
+    async rollback(siteName: string, commit: string, actor: string): Promise<void> {
+        await this.#post('rollback', {site: siteName, commit, actor});
+        this.#logger.info(`site=${siteName} rollback to ${commit} by ${actor} accepted by builder`);
+    }
+
+    async #post(path: string, payload: Record<string, unknown>): Promise<void> {
+        // The signature covers these exact bytes, so the same buffer is both
+        // signed and sent - re-serialising would invalidate it.
+        const body = Buffer.from(JSON.stringify({...payload, issuedAt: Date.now()}));
+
+        const res = await fetch(`${this.#baseUrl}/api/${path}`, {
             method: 'POST',
             headers: {
                 'content-type': 'application/json',
@@ -40,9 +54,8 @@ export default class HttpBuildClient implements IBuildClient {
             signal: AbortSignal.timeout(this.#timeoutMs),
         });
         if (!res.ok) {
-            throw new Error(`builder answered ${res.status} to trigger site=${siteName}`);
+            throw new Error(`builder answered ${res.status} to ${path} site=${payload.site}`);
         }
-        this.#logger.info(`site=${siteName} commit=${commit} accepted by builder`);
     }
 
     async snapshot(): Promise<IBuildSnapshot> {

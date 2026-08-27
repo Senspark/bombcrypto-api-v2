@@ -4,6 +4,7 @@ import ISiteRegistry from "./services/ISiteRegistry";
 import ISecretStore from "./services/ISecretStore";
 import IBuildClient from "./services/IBuildClient";
 import INotifier from "./services/INotifier";
+import IAuthService from "./services/IAuthService";
 
 import ReceiverConfig from "./services-impl/ReceiverConfig";
 import ConsoleLogger from "./services-impl/loggers/ConsoleLogger";
@@ -13,6 +14,7 @@ import HttpBuildClient from "./services-impl/HttpBuildClient";
 import SlackNotifier from "./services-impl/SlackNotifier";
 import BuildPoller from "./services-impl/BuildPoller";
 import GithubIpFilter from "./services-impl/GithubIpFilter";
+import MemoryAuthService from "./services-impl/MemoryAuthService";
 import {loadPrivateKey} from "./utils/TriggerSignature";
 
 export default class ReceiverDependencies {
@@ -24,6 +26,7 @@ export default class ReceiverDependencies {
     readonly notifier: INotifier;
     readonly poller: BuildPoller;
     readonly hookIpFilter: GithubIpFilter;
+    readonly auth: IAuthService;
 
     constructor() {
         this.config = new ReceiverConfig();
@@ -39,6 +42,7 @@ export default class ReceiverDependencies {
         );
         this.notifier = new SlackNotifier(this.logger, this.config.slackWebhookUrl);
         this.poller = new BuildPoller(this.logger, this.builder, this.notifier, this.config.pollIntervalMs, this.config.dashboardUrl);
+        this.auth = new MemoryAuthService(this.logger, this.config);
         this.hookIpFilter = new GithubIpFilter(
             this.logger,
             this.config.hookIpMode,

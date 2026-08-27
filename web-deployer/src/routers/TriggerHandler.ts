@@ -3,9 +3,9 @@ import {KeyObject} from "node:crypto";
 import ILogger from "../services/ILogger";
 import ISiteRegistry from "../services/ISiteRegistry";
 import IDeployRunner from "../services/IDeployRunner";
-import {verifyTrigger} from "../utils/TriggerSignature";
-import {MAX_AUTHOR_LENGTH, MAX_COMMIT_MESSAGE_LENGTH, SHA_REGEX, TRIGGER_SIGNATURE_HEADER} from "../consts/Consts";
+import {MAX_AUTHOR_LENGTH, MAX_COMMIT_MESSAGE_LENGTH, SHA_REGEX} from "../consts/Consts";
 import {sanitizeText} from "../utils/Sanitize";
+import {readSignedRequest} from "../utils/SignedRequest";
 
 export default class TriggerHandler {
     readonly #logger: ILogger;
@@ -23,38 +23,10 @@ export default class TriggerHandler {
     }
 
     handle = (req: Request, res: Response): void => {
-        const rawBody = req.rawBody;
-        if (!rawBody) {
-            res.sendErr('BAD_REQUEST', 400);
-            return;
-        }
+        const request = readSignedRequest(this.#logger, this.#registry, this.#publicKey, this.#maxAgeMs, req, res);
+        if (!request) return;
 
-        const signature = req.header(TRIGGER_SIGNATURE_HEADER);
-        if (!verifyTrigger(this.#publicKey, rawBody, signature)) {
-            this.#logger.error(`unsigned trigger from ${req.ip}`);
-            res.sendErr('INVALID_SIGNATURE', 401);
-            return;
-        }
-
-        const body = req.body ?? {};
-
-        // A build can read this container's memory and disk, so it can capture a
-        // signed trigger as it arrives. Without an expiry it could replay that
-        // trigger later to roll a site back to an older commit.
-        const issuedAt = Number(body.issuedAt);
-        if (!Number.isFinite(issuedAt) || Math.abs(Date.now() - issuedAt) > this.#maxAgeMs) {
-            this.#logger.error(`stale trigger issuedAt=${body.issuedAt}`);
-            res.sendErr('STALE_TRIGGER', 400);
-            return;
-        }
-
-        const site = this.#registry.get(String(body.site ?? ''));
-        if (!site) {
-            this.#logger.error(`unknown site "${body.site}"`);
-            res.sendErr('UNKNOWN_SITE', 404);
-            return;
-        }
-
+        const {site, body} = request;
         const commit = String(body.commit ?? '');
         if (!SHA_REGEX.test(commit)) {
             res.sendErr('BAD_COMMIT', 400);

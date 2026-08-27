@@ -32,6 +32,8 @@ export default class BuilderDependencies {
             this.registry,
             this.config.reposDir,
             this.config.logsDir,
+            this.config.backupDir,
+            this.config.backupKeep,
             this.config.gitTimeoutMs,
             this.config.buildTimeoutMs,
             this.config.publishTimeoutMs,

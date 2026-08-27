@@ -4,7 +4,13 @@ import ISiteRegistry from "../services/ISiteRegistry";
 import ISecretStore from "../services/ISecretStore";
 import IBuildClient from "../services/IBuildClient";
 import {verifyGithubSignature} from "../utils/Signature";
-import {MAX_AUTHOR_LENGTH, MAX_COMMIT_MESSAGE_LENGTH, SHA_REGEX} from "../consts/Consts";
+import {
+    MAX_AUTHOR_LENGTH,
+    MAX_COMMIT_MESSAGE_LENGTH,
+    PREVIEW_COMMAND,
+    PREVIEW_ROLES,
+    SHA_REGEX,
+} from "../consts/Consts";
 import {sanitizeText} from "../utils/Sanitize";
 
 export default class WebhookHandler {
@@ -48,13 +54,17 @@ export default class WebhookHandler {
             res.sendOk({pong: true});
             return;
         }
+        const body = req.body ?? {};
+        if (event === 'issue_comment') {
+            await this.#handleComment(siteName, body, res);
+            return;
+        }
         if (event !== 'push') {
             this.#logger.info(`site=${siteName} ignoring event "${event}"`);
             res.status(204).end();
             return;
         }
 
-        const body = req.body ?? {};
         if (body.ref !== `refs/heads/${site.branch}`) {
             this.#logger.info(`site=${siteName} ignoring ref "${body.ref}" (want ${site.branch})`);
             res.status(204).end();
@@ -85,6 +95,50 @@ export default class WebhookHandler {
         // GitHub gives up after 10s; the build takes far longer than that.
         res.status(202).json({queued: true, commit});
     };
+
+    // A comment asking for a preview build. Building a pull request head runs
+    // code nobody has merged, so the gate is who wrote the comment: GitHub
+    // states the commenter's association with the repository, and the payload
+    // carrying it is signed. CONTRIBUTOR is not on the list - it only means the
+    // author has had a pull request merged before, which is not a role.
+    async #handleComment(siteName: string, body: any, res: Response): Promise<void> {
+        if (body.action !== 'created' || !body.issue?.pull_request) {
+            res.status(204).end();
+            return;
+        }
+
+        const text = String(body.comment?.body ?? '');
+        if (!text.split('\n').some(line => line.trim() === PREVIEW_COMMAND)) {
+            res.status(204).end();
+            return;
+        }
+
+        const association = String(body.comment?.author_association ?? '');
+        const commenter = sanitizeText(body.comment?.user?.login, MAX_AUTHOR_LENGTH);
+        if (!PREVIEW_ROLES.includes(association)) {
+            this.#logger.error(`site=${siteName} refusing ${PREVIEW_COMMAND} from ${commenter ?? 'unknown'} (association=${association})`);
+            res.status(403).json({error: 'FORBIDDEN_ROLE'});
+            return;
+        }
+
+        const prNumber = Number(body.issue?.number);
+        if (!Number.isSafeInteger(prNumber) || prNumber <= 0) {
+            this.#logger.error(`site=${siteName} bad pull request number "${body.issue?.number}"`);
+            res.sendErr('BAD_PR_NUMBER', 400);
+            return;
+        }
+
+        try {
+            await this.#builder.previewPr(siteName, prNumber, commenter ?? association);
+        } catch (e) {
+            this.#logger.error(`site=${siteName} PR #${prNumber} cannot reach builder: ${(e as Error).message}`);
+            res.sendErr('BUILDER_UNAVAILABLE', 502);
+            return;
+        }
+
+        this.#logger.info(`site=${siteName} queued preview of PR #${prNumber} asked by ${commenter} (${association})`);
+        res.status(202).json({queued: true, prNumber});
+    }
 
     // The only payload fields beyond ref and after that are read at all. They are
     // display text controlled by whoever wrote the commit, so they are flattened
