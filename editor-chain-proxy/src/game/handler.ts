@@ -152,8 +152,14 @@ export async function handleGame(body: unknown) {
         return { result: await game().bhero.getPendingTokens(str(p, "walletAddress")) };
       case "IS_SUPER_BOX_ENABLED":
         return { result: await game().bhero.isSuperBoxEnabled() };
-      case "HAS_PENDING_HERO_RANDOMIZE":
-        return { result: await game().bhero.hasPendingRandomization(num(p, "heroId")) };
+      case "GET_UPGRADE_NATIVE_PRICE":
+        return { result: await game().bheroS.getUpgradeNativePrice(num(p, "rarity"), num(p, "level")) };
+      case "GET_RESET_SKILL_NATIVE_PRICE":
+        return { result: await game().bheroS.getResetSkillNativePrice(num(p, "rarity"), num(p, "times")) };
+      case "GET_RESET_SKIN_NATIVE_PRICE":
+        return { result: await game().bheroS.getResetSkinNativePrice(num(p, "rarity")) };
+      case "GET_NATIVE_RATE":
+        return { result: await game().bheroS.getNativeRate() };
 
       // ── Hero (writes) ──
       case "BUY_HERO":
@@ -161,15 +167,17 @@ export async function handleGame(body: unknown) {
       case "BUY_HERO_S":
         return { result: await game().bheroS.mint(str(p, "walletAddress"), num(p, "count")) };
       case "UPGRADE_HERO":
-        return { result: await game().bhero.upgrade(str(p, "walletAddress"), num(p, "baseId"), num(p, "materialId")) };
+        return {
+          result: await game().bheroS.upgradeHero(num(p, "baseId"), num(p, "materialId"), str(p, "priceWei")),
+        };
+      case "RESET_SKILL":
+        return { result: await game().bheroS.resetSkill(num(p, "heroId"), str(p, "priceWei")) };
+      case "RESET_SKIN":
+        return { result: await game().bheroS.resetSkin(num(p, "heroId"), str(p, "priceWei")) };
       case "CLAIM_HERO":
         return { result: await game().bhero.claim(str(p, "walletAddress")) };
       case "PROCESS_TOKEN_REQUESTS":
         return { result: await game().bhero.processTokenRequests() };
-      case "RANDOMIZE_HERO_ABILITIES":
-        return { result: await game().bhero.randomizeAbilities(str(p, "walletAddress"), num(p, "heroId")) };
-      case "PROCESS_HERO_RANDOMIZE_AB":
-        return { result: await game().bhero.processRandomizeAbilities(num(p, "heroId")) };
 
       // ── HeroS / fusion / shield / rock ──
       case "FUSION_HERO":

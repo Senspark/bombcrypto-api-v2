@@ -5,7 +5,6 @@ import HeroTokenAbi from "../abi/HeroTokenAbi";
 import HeroDesignAbi from "../abi/HeroDesignAbi";
 import { bn2dArrayToStrings } from "../util";
 
-const HERO_S_PRICE_MULTIPLIER = 5n;
 // Guard against a never-converging poll in processTokenRequestsV2 (the client
 // loops forever; a dev tool must not hang the Editor's HTTP call indefinitely).
 const MAX_PROCESS_POLLS = 30;
@@ -127,10 +126,6 @@ export class BHero {
     return (await this.mainRead().getFunction("getProcessableTokens")(user)).toString();
   }
 
-  async hasPendingRandomization(heroId: number): Promise<boolean> {
-    return await this.mainRead().getFunction("hasPendingRandomization")(heroId);
-  }
-
   // ── writes ──
   // NOTE: estimateGas uses (user) but the real tx drops it (contract.claim() takes
   // no arg) — preserved from the client.
@@ -157,39 +152,12 @@ export class BHero {
     }
   }
 
-  async upgrade(user: string, baseId: number, materialId: number): Promise<boolean> {
-    try {
-      // Hardcoded rarity 5 / level 3, ×5 multiplier, paid in BCOIN (client).
-      const cost = await this.getUpgradeCost(5, 3);
-      const costBN = toBigInt(cost) * HERO_S_PRICE_MULTIPLIER;
-      await this.bcoin.checkAllowance(user, this.address, costBN);
-      await this.ctx.send(this.mainWrite(), "upgrade", [baseId, materialId]);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  async randomizeAbilities(user: string, heroId: number): Promise<boolean> {
-    try {
-      // Hardcoded rarity 5 / times 10, ×5 multiplier, paid in BCOIN (client).
-      const cost = await this.getRandomizeAbilityCost(5, 10);
-      const costBN = toBigInt(cost) * HERO_S_PRICE_MULTIPLIER;
-      await this.bcoin.checkAllowance(user, this.address, costBN);
-      await this.ctx.send(this.mainWrite(), "randomizeAbilities", [heroId]);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  async processRandomizeAbilities(heroId: number): Promise<boolean> {
-    try {
-      await this.ctx.send(this.mainWrite(), "processRandomizeAbilities", [heroId]);
-      return true;
-    } catch {
-      return false;
-    }
+  // The hero's 256-bit details word, as a decimal string. Read straight after a mutating tx so
+  // the client can re-render without waiting for the server sync to catch up. Reads the public
+  // `tokenDetails` mapping — the `getTokenDetail` entry in HeroTokenAbi is stale and reverts on
+  // the deployed implementation.
+  async getTokenDetail(heroId: number): Promise<string> {
+    return (await this.mainRead().getFunction("tokenDetails")(heroId)).toString();
   }
 
   async processTokenRequests(): Promise<{ result: boolean; fusionFailAmount: number; fusionSuccessHeroIds: number[] }> {
