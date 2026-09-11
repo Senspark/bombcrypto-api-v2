@@ -95,6 +95,8 @@ export interface GameContracts {
   houseToken: string;
   deposit: string;
   claimManager: string;
+  /// Niveis 6-10 (BCOIN + SEN + nativo). Vazio onde o contrato nao foi publicado.
+  heroUpgradeV2: string;
 }
 
 const GAME_REGISTRY: Record<string, GameContracts> = {
@@ -107,6 +109,7 @@ const GAME_REGISTRY: Record<string, GameContracts> = {
     houseToken: "0xB901EE87a6321ea73532C7fDF772dC9790b38c3C",
     deposit: "0x23094e46b74BF9352720a14CcbEf5C85496f65FC",
     claimManager: "0xc3835d85059f6454433213Ff7A16FA2be40d9a0A",
+    heroUpgradeV2: "",
   },
   amoy: {
     coinToken: "0xcF693b54F86c49bbBa54Ff887488Bbf84C5D05BF",
@@ -117,6 +120,7 @@ const GAME_REGISTRY: Record<string, GameContracts> = {
     houseToken: "0x0fc7397017f1bebaf8ffe8220871af2b5b65509d",
     deposit: "0x48ce46d900105cf14ebf815c9980661c112b16b6",
     claimManager: "0x66e25f1de0a5b33e804be1a4e8c5e9376952b7c9",
+    heroUpgradeV2: "",
   },
 };
 
