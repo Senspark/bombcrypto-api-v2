@@ -12,6 +12,9 @@ export default class EnvConfig implements IEnvConfig {
     allowedEmailDomain: string;
     sessionTtlSeconds: number;
     redisConnectionString: string;
+    databaseUrl: string;
+    nativeStatsTtlSeconds: number;
+    snapshotTimeZone: string;
     managerPrivateKey: string;
     rpcByChainId: Record<number, string>;
     tickIntervalMs: number;
@@ -27,6 +30,9 @@ export default class EnvConfig implements IEnvConfig {
             ALLOWED_EMAIL_DOMAIN: str({default: "senspark.com"}),
             SESSION_TTL_SECONDS: num({default: 43_200}),
             REDIS_CONNECTION_STRING: str({default: ""}),
+            DATABASE_URL: str({default: ""}),
+            NATIVE_STATS_TTL_SECONDS: num({default: 60}),
+            SNAPSHOT_TIMEZONE: str({default: "Asia/Bangkok"}),
             MANAGER_PRIVATE_KEY: str({default: ""}),
             BSC_RPC: str({default: "https://bsc-dataseed.binance.org"}),
             POLYGON_RPC: str({default: "https://polygon-bor-rpc.publicnode.com"}),
@@ -42,6 +48,9 @@ export default class EnvConfig implements IEnvConfig {
         this.allowedEmailDomain = env.ALLOWED_EMAIL_DOMAIN;
         this.sessionTtlSeconds = env.SESSION_TTL_SECONDS;
         this.redisConnectionString = env.REDIS_CONNECTION_STRING;
+        this.databaseUrl = env.DATABASE_URL;
+        this.nativeStatsTtlSeconds = env.NATIVE_STATS_TTL_SECONDS;
+        this.snapshotTimeZone = env.SNAPSHOT_TIMEZONE;
         this.managerPrivateKey = env.MANAGER_PRIVATE_KEY;
         this.rpcByChainId = {
             [BSC_CHAIN_ID]: env.BSC_RPC,

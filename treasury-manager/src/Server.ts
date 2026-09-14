@@ -5,10 +5,16 @@ import {RedisClientType} from "redis";
 import Dependencies from "./Dependencies.js";
 import {BSC_CHAIN_ID, POLYGON_CHAIN_ID} from "./consts/Consts.js";
 import {buildAuthMiddleware, buildAuthRouter} from "./routers/AuthRouter.js";
+import buildNativeStatsRouter from "./routers/NativeStatsRouter.js";
 import buildScheduleRouter from "./routers/ScheduleRouter.js";
+import SnapshotTicker from "./scheduler/SnapshotTicker.js";
 import Ticker from "./scheduler/Ticker.js";
 import AuthService from "./services-impl/AuthService.js";
 import ChainClients from "./services-impl/ChainClients.js";
+import NativeStatsRepository from "./services-impl/NativeStatsRepository.js";
+import NativeStatsService from "./services-impl/NativeStatsService.js";
+import NativeStatsStore from "./services-impl/NativeStatsStore.js";
+import getPgPool from "./services-impl/PostgresClient.js";
 import getRedisClient from "./services-impl/Redis.js";
 import ScheduleStore from "./services-impl/ScheduleStore.js";
 import SwapExecutor from "./services-impl/SwapExecutor.js";
@@ -29,6 +35,23 @@ try {
     const auth = new AuthService(logger, envConfig, redis);
     const ticker = new Ticker(logger, store, executor, envConfig);
 
+    // The game database is the only source for what users have already spent, so without it the
+    // withdrawable surplus cannot be told apart from money still owed to depositors.
+    let stats: NativeStatsService | null = null;
+    let snapshotTicker: SnapshotTicker | null = null;
+    if (envConfig.databaseUrl) {
+        stats = new NativeStatsService(
+            logger,
+            new NativeStatsRepository(logger, getPgPool(envConfig.databaseUrl)),
+            new NativeStatsStore(logger, redis),
+            envConfig.nativeStatsTtlSeconds,
+            envConfig.snapshotTimeZone,
+        );
+        snapshotTicker = new SnapshotTicker(logger, stats);
+    } else {
+        logger.warn("DATABASE_URL is empty — DepositNative reporting is off, schedules are unaffected.");
+    }
+
     logger.info(`manager wallet ${clients.managerAddress}`);
     void reportGas(clients);
 
@@ -48,9 +71,16 @@ try {
     });
 
     app.use("/treasury/auth", buildAuthRouter(logger, auth, envConfig.isProduction));
-    app.use("/treasury", buildAuthMiddleware(logger, auth, envConfig.isProduction), buildScheduleRouter(logger, store, executor));
+    const requireAuth = buildAuthMiddleware(logger, auth, envConfig.isProduction);
+    // Mounted first: /treasury would otherwise take the more specific path through the schedule
+    // router before reaching this one.
+    if (stats) {
+        app.use("/treasury/native", requireAuth, buildNativeStatsRouter(logger, stats));
+    }
+    app.use("/treasury", requireAuth, buildScheduleRouter(logger, store, executor));
 
     ticker.start();
+    snapshotTicker?.start();
 
     const server = app.listen(envConfig.port, () => {
         logger.info(`treasury-manager listening on ${envConfig.port} (version ${envConfig.appVersion})`);
@@ -59,6 +89,7 @@ try {
     const shutdown = () => {
         logger.info("shutting down...");
         ticker.stop();
+        snapshotTicker?.stop();
         server.close();
         process.exit(0);
     };

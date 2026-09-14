@@ -1,3 +1,5 @@
+import {NativeNetwork} from "../services/INativeStats.js";
+
 export const BSC_CHAIN_ID = 56;
 export const POLYGON_CHAIN_ID = 137;
 
@@ -29,6 +31,18 @@ export const INSTANCES: TreasuryInstance[] = [
     {id: "bhouse-bsc", label: "BHouseMarket", chainId: BSC_CHAIN_ID, address: "0x049896f350C802CD5C91134E5f35Ec55FA8f0108"},
     {id: "bhouse-polygon", label: "BHouseMarket", chainId: POLYGON_CHAIN_ID, address: "0xbb5966daf83ec4d3f168671a464eb18430eea3be"},
 ];
+
+export const NATIVE_NETWORKS: readonly NativeNetwork[] = ["BSC", "POLYGON"];
+
+// user_block_reward.reward_type carrying the spendable native balance, per network.
+export const NATIVE_REWARD_TYPE: Record<NativeNetwork, string> = {
+    BSC: "BNB_DEPOSITED",
+    POLYGON: "POL_DEPOSITED",
+};
+
+export function isNativeNetwork(value: unknown): value is NativeNetwork {
+    return NATIVE_NETWORKS.includes(value as NativeNetwork);
+}
 
 export const POLYGON_USDT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
 export const BSC_USDT = "0x55d398326f99059fF775485246999027B3197955";
@@ -91,6 +105,9 @@ export const TREASURY_ABI = [
 
 export const RedisKeys = {
     SCHEDULE_IDS: "AP_TREASURY:SCHEDULE:IDS",
+    NATIVE_EXCLUDED_UIDS: "AP_TREASURY:NATIVE:EXCLUDED_UIDS",
+    NATIVE_SUMMARY_PREFIX: "AP_TREASURY:NATIVE:SUMMARY:",
+    NATIVE_DAILY_PREFIX: "AP_TREASURY:NATIVE:DAILY:",
     CONFIG_PREFIX: "AP_TREASURY:CONFIG:",
     STATE_PREFIX: "AP_TREASURY:STATE:",
     RUNS_PREFIX: "AP_TREASURY:RUNS:",
@@ -106,4 +123,6 @@ export const ClientErrors = {
     INVALID_CREDENTIAL: "Sign-in failed. Please try again.",
     INTERNAL: "Unable to process your request right now. Please try again later.",
     NOT_FOUND: "Schedule not found.",
+    INVALID_NETWORK: "Unknown network.",
+    INVALID_UIDS: "Excluded uids must be a list of positive integers.",
 };

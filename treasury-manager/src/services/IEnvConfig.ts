@@ -11,6 +11,13 @@ export default interface IEnvConfig {
 
     redisConnectionString: string;
 
+    /** Read-only DSN for the game database. Empty disables the native deposit reporting. */
+    databaseUrl: string;
+    /** How long a native summary may be served from cache. */
+    nativeStatsTtlSeconds: number;
+    /** IANA zone deciding which calendar day a daily closing belongs to. */
+    snapshotTimeZone: string;
+
     /** Manager EOA holding WITHDRAWER_ROLE on the six treasury proxies. */
     managerPrivateKey: string;
 
