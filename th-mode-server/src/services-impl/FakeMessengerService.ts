@@ -12,7 +12,7 @@ type CALL_BACK = (data: any) => void;
 export default class FakeMessengerService implements IMessengerService {
     readonly #logger: ILogger;
     readonly #refreshIntervalMs: number;
-    readonly #streamListeners = new Map<string, CALL_BACK[]>();
+    readonly #listeners = new Map<string, CALL_BACK[]>();
     #heroIdCounter = 1;
 
     constructor(logger: ILogger, envConfig: IEnvConfig) {
@@ -20,31 +20,28 @@ export default class FakeMessengerService implements IMessengerService {
         this.#refreshIntervalMs = envConfig.refreshIntervalMs;
     }
 
-    async send(_streamKey: string, _message: any): Promise<boolean> {
-        return true;
-    }
-
-    listen(streamKey: string, callback: CALL_BACK): void {
-        if (!this.#streamListeners.has(streamKey)) {
-            this.#streamListeners.set(streamKey, [callback]);
-            this.#startInterval(streamKey);
+    subscribe(channel: string, callback: CALL_BACK): void {
+        if (!this.#listeners.has(channel)) {
+            this.#listeners.set(channel, [callback]);
+            this.#startInterval(channel);
         } else {
-            this.#streamListeners.get(streamKey)!.push(callback);
+            this.#listeners.get(channel)!.push(callback);
         }
     }
 
-    #startInterval(streamKey: string) {
-        this.#logger.info(`Mock data active — emitting fake entries every ${this.#refreshIntervalMs}ms`);
+    #startInterval(channel: string) {
+        this.#logger.info(`Mock data active — emitting fake batches every ${this.#refreshIntervalMs}ms`);
         setInterval(() => {
-            const callbacks = this.#streamListeners.get(streamKey);
+            const callbacks = this.#listeners.get(channel);
             if (!callbacks) return;
 
             const count = ENTRIES_PER_TICK_MIN + Math.floor(Math.random() * (ENTRIES_PER_TICK_MAX - ENTRIES_PER_TICK_MIN + 1));
+            const batch: IDataThMode[] = [];
             for (let i = 0; i < count; i++) {
-                const entry = this.#generateEntry();
-                for (const cb of callbacks) {
-                    cb(entry);
-                }
+                batch.push(this.#generateEntry());
+            }
+            for (const cb of callbacks) {
+                cb(batch);
             }
         }, this.#refreshIntervalMs);
     }

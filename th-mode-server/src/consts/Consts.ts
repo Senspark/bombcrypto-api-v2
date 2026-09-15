@@ -43,6 +43,7 @@ export interface IHeroInfo {
     score: number;
 }
 
-export const StreamKeys = {
-    SV_TH_MODE_RACE: "SV_TH_MODE_RACE",
+export const Channels = {
+    // Redis Pub/Sub, published by the SmartFox server once per second as a JSON array
+    SV_TH_MODE_RACE_CHANNEL: "SV_TH_MODE_RACE_CHANNEL",
 }

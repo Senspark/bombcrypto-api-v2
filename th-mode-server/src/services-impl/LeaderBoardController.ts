@@ -1,6 +1,6 @@
 import {ILeaderBoardController, ILogger} from "../Services";
 import THUtils from "../utils/THModeV2Utils";
-import {HeroRarity, HeroUniqueKey, IHeroInfo, StreamKeys} from "../consts/Consts";
+import {Channels, HeroRarity, HeroUniqueKey, IHeroInfo} from "../consts/Consts";
 import SortedMap from "../utils/SortedMap";
 import IMessengerService from "../services/IMessengerService";
 import RealtimeIndex from "./RealtimeIndex";
@@ -15,7 +15,10 @@ export default class LeaderBoardController implements ILeaderBoardController {
      */
     #pools: Map<PoolIndex, LeaderBoard> = new Map();
 
-    #raceId: string | undefined;
+    /**
+     * 0 = chưa nhận race nào. raceId lấy từ sequence DB nên chỉ tăng.
+     */
+    #raceId = 0;
 
     #logger: ILogger;
 
@@ -34,26 +37,34 @@ export default class LeaderBoardController implements ILeaderBoardController {
         // disable log
         this.#logger = logger;
 
-        this._messageService.listen(StreamKeys.SV_TH_MODE_RACE, this.onThModeRaceUpdated.bind(this));
+        this._messageService.subscribe(Channels.SV_TH_MODE_RACE_CHANNEL, this.onThModeRaceBatch.bind(this));
     }
 
     get currentRaceId() {
-        if (!this.#raceId) {
-            return 0;
-        }
-        return parseInt(this.#raceId) || 0;
+        return this.#raceId;
     }
 
-
-    async onThModeRaceUpdated(data: any) {
+    /**
+     * Một batch = mọi hero thay đổi trong ~1 giây, đã sắp theo raceId tăng dần.
+     */
+    onThModeRaceBatch(data: any) {
         try {
-            const body: IDataThMode = data;
-            this.#logger.assert(body, 'Invalid request body');
-
-            this.updateNewRace(body.raceId);
-            this.updateNewData(body);
-
-            this._onNewDataUpdated?.();
+            if (!Array.isArray(data)) {
+                this.#logger.error('Invalid TH race batch');
+                return;
+            }
+            let updated = false;
+            for (const body of data as IDataThMode[]) {
+                // Entry trễ của race đã kết thúc: áp vào sẽ xoá board của race hiện tại
+                if (body.raceId < this.#raceId) {
+                    continue;
+                }
+                this.updateNewRace(body.raceId);
+                updated = this.updateNewData(body) || updated;
+            }
+            if (updated) {
+                this._onNewDataUpdated?.();
+            }
         } catch (e) {
             this.#logger.error(e);
         }
@@ -69,11 +80,11 @@ export default class LeaderBoardController implements ILeaderBoardController {
 
     private updateNewRace(raceId: number) {
         try {
-            if (this.#raceId !== raceId.toString()) {
+            if (this.#raceId !== raceId) {
                 //this.#logger.info(`NEW Race id: ${raceId}`);
                 this.#pools.forEach(leaderBoard => leaderBoard.clear());
                 this._realtimeIndex.clearAll();
-                this.#raceId = raceId.toString();
+                this.#raceId = raceId;
             }
         } catch (e) {
             this.#logger.error('Error when fetchNewRace');
