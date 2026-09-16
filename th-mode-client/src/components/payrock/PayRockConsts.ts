@@ -13,6 +13,12 @@ const SCAN_HOST: Record<Network, string> = {
 // `createRock` selector on BHeroS — the function called when a user burns a hero for quartz.
 const CREATE_ROCK_METHOD = '0x2e61a0fe~Create Rock';
 
+// The API sends UTC; render it in the viewer's own timezone, named so the reading is unambiguous.
+export function formatPaidAt(iso: string): string {
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(undefined, {timeZoneName: 'short'});
+}
+
 export function buildAdvancedFilterUrl(network: Network, wallet: string): string {
     const params = new URLSearchParams({
         fadd: wallet,

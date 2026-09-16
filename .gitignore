@@ -4,5 +4,8 @@ node_modules
 blockchain-center-api/rpc.config.prod.json
 blockchain-center-api/rpc.config.test.json
 th-mode-server/dist
+treasury-manager/dist
 bridge-monitor-client/dist
 bridge-monitor-client/.env.test
+web-deployer/dist
+web-deployer/sites.json

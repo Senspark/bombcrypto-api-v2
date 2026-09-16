@@ -59,6 +59,7 @@ export default class BlockchainApiClient implements IBlockchainApiClient {
             tx: String(payload.tx ?? tx),
             wallet_address: wallet,
             hero_ids: heroIds,
+            hero_details: coerceHeroDetails(payload.hero_details ?? payload.heroDetails),
         };
     }
 }
@@ -79,6 +80,22 @@ function unwrap(body: any): any {
         return m;
     }
     return body;
+}
+
+// Kept as strings — a hero details value is a uint256 and does not survive Number.
+function coerceHeroDetails(v: any): string[] | undefined {
+    if (Array.isArray(v)) {
+        const items = v.map((x) => String(x));
+        return items.every((s) => /^[0-9]+$/.test(s)) ? items : undefined;
+    }
+    if (typeof v === 'string') {
+        try {
+            return coerceHeroDetails(JSON.parse(v));
+        } catch {
+            return undefined;
+        }
+    }
+    return undefined;
 }
 
 function coerceHeroIds(v: any): number[] | null {

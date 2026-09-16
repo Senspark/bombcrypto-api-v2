@@ -3,9 +3,16 @@ import type { GameContext } from "../context";
 import type { CoinToken } from "./coinToken";
 import type { BHero } from "./bhero";
 import HeroSTokenAbi from "../abi/HeroSTokenAbi";
+import { logger } from "../../logger";
 
 // Ported from Module/BHeroS.ts. Shares the Hero design contract (borrowed from
 // BHero). Shield/fusion/rock ops take no token allowance; only mint does (BCOIN).
+export interface HeroActionResult {
+  success: boolean;
+  txHash: string;
+  details: string;
+}
+
 export class BHeroS {
   private _coinCost: bigint | null = null;
   private _senCost: bigint | null = null;
@@ -104,6 +111,60 @@ export class BHeroS {
       return receipt?.hash?.toString() ?? "";
     } catch {
       return "";
+    }
+  }
+
+  // ── Native-paid BHero actions (upgrade / reset skill / reset skin) ──
+  // All three are payable with a strict require(msg.value == price) and no refund of excess, so
+  // priceWei is relayed verbatim as an exact wei string. The details word is re-read after the
+  // receipt so the caller can render the result without waiting for the server sync.
+
+  async getUpgradeNativePrice(rarity: number, level: number): Promise<string> {
+    const design = await this.bhero.designContract();
+    return (await design.getFunction("getUpgradeNativePrice")(rarity, level)).toString();
+  }
+
+  async getResetSkillNativePrice(rarity: number, times: number): Promise<string> {
+    const design = await this.bhero.designContract();
+    return (await design.getFunction("getResetSkillNativePrice")(rarity, times)).toString();
+  }
+
+  async getResetSkinNativePrice(rarity: number): Promise<string> {
+    const design = await this.bhero.designContract();
+    return (await design.getFunction("getResetSkinNativePrice")(rarity)).toString();
+  }
+
+  async getNativeRate(): Promise<string> {
+    const design = await this.bhero.designContract();
+    return (await design.getFunction("getNativeRate")()).toString();
+  }
+
+  async upgradeHero(baseId: number, materialId: number, priceWei: string): Promise<HeroActionResult> {
+    return this.sendHeroAction(baseId, "upgradeHero", [baseId, materialId], priceWei);
+  }
+
+  async resetSkill(heroId: number, priceWei: string): Promise<HeroActionResult> {
+    return this.sendHeroAction(heroId, "resetSkill", [heroId], priceWei);
+  }
+
+  async resetSkin(heroId: number, priceWei: string): Promise<HeroActionResult> {
+    return this.sendHeroAction(heroId, "resetSkin", [heroId], priceWei);
+  }
+
+  private async sendHeroAction(
+    heroId: number,
+    name: string,
+    args: unknown[],
+    priceWei: string,
+  ): Promise<HeroActionResult> {
+    try {
+      const value = BigInt(priceWei);
+      const receipt = await this.ctx.send(this.mainWrite(), name, args, { value });
+      const details = await this.bhero.getTokenDetail(heroId);
+      return { success: true, txHash: receipt?.hash?.toString() ?? "", details };
+    } catch (ex) {
+      logger.error(`${name} failed: ${ex}`);
+      return { success: false, txHash: "", details: "" };
     }
   }
 

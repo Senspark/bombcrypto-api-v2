@@ -9,6 +9,8 @@ export interface IPreviewItem {
     status: PerTxStatusPreview;
     message?: string;
     currentRock?: number;
+    /** When an ALREADY_PAID tx was credited, ISO 8601. */
+    paidAt?: string;
 }
 
 export interface IPreviewSummary {

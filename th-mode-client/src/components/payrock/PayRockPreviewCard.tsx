@@ -2,6 +2,7 @@ import React from 'react';
 import {Alert, Button, Card, Descriptions, Space, Tag, Typography} from 'antd';
 import {CheckCircleOutlined} from '@ant-design/icons';
 import {IPreviewBody, PerTxStatusPreview} from './PayRockData';
+import {formatPaidAt} from './PayRockConsts';
 import './PayRockPage.css';
 
 const {Text} = Typography;
@@ -106,6 +107,9 @@ const PayRockPreviewCard: React.FC<IProps> = ({preview, confirming, onConfirm}) 
                             <div>{NON_PAYABLE_HINT[item.status as Exclude<PerTxStatusPreview, 'PAYABLE'>]}</div>
                             {item.status === 'ALREADY_PAID' && item.rockAmount > 0 && (
                                 <div>Previously credited: <Text strong>{item.rockAmount}</Text> quartz.</div>
+                            )}
+                            {item.status === 'ALREADY_PAID' && item.paidAt && (
+                                <div>Paid at: <Text strong>{formatPaidAt(item.paidAt)}</Text></div>
                             )}
                             {item.message && <div><Text type="secondary">{item.message}</Text></div>}
                         </>

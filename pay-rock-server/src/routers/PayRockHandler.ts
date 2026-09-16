@@ -96,7 +96,7 @@ export default class PayRockHandler {
         }
 
         const processed: Array<{ tx: string; network: Network; rockAmount: number; status: 'PAID' }> = [];
-        const skipped: Array<{ tx: string; status: 'ALREADY_PAID' }> = [];
+        const skipped: Array<{ tx: string; status: 'ALREADY_PAID'; paidAt?: string }> = [];
         const failed: Array<{ tx: string; status: 'ERROR_DB'; message: string }> = [];
         let totalRockCredited = 0;
         const summaryWallet: string | null = body.items.find(i => i.wallet)?.wallet ?? null;
@@ -120,7 +120,7 @@ export default class PayRockHandler {
             try {
                 const existing = await this.#repo.findExistingRockTx(item.tx, item.network);
                 if (existing?.status === 'DONE') {
-                    skipped.push({tx: item.tx, status: 'ALREADY_PAID'});
+                    skipped.push({tx: item.tx, status: 'ALREADY_PAID', paidAt: existing.paidAt ?? undefined});
                     continue;
                 }
                 await this.#repo.creditRock(item.wallet, item.tx, item.heroIds, item.rockAmount, item.network);
@@ -192,6 +192,7 @@ export default class PayRockHandler {
             item.status = 'ALREADY_PAID';
             item.rockAmount = existing.rockAmount;
             item.heroIds = existing.heroIds;
+            if (existing.paidAt) item.paidAt = existing.paidAt;
             return item;
         }
 
@@ -210,23 +211,38 @@ export default class PayRockHandler {
         item.wallet = burnTx.wallet_address.toLowerCase();
         item.heroIds = burnTx.hero_ids;
 
-        const genIds = await this.#repo.findHeroGenIds(burnTx.hero_ids, network);
-        if (!genIds.length) {
+        // The burn event carries the details of every hero, including ones the game database never
+        // synced (a third-party client can burn without the user ever logging in). Only fall back to
+        // the database for burns older than the CreateRockDetails contract upgrade.
+        const fromEvent = burnTx.hero_details?.length === burnTx.hero_ids.length;
+        const details = fromEvent ? burnTx.hero_details! : await this.#repo.findHeroGenIds(burnTx.hero_ids, network);
+        if (details.length !== burnTx.hero_ids.length) {
+            this.#logger.error(
+                `no hero data tx=${tx} network=${network} heroes=${burnTx.hero_ids.length} details=${details.length} source=DB`,
+            );
             item.status = 'INVALID_NO_HERO_DATA';
             return item;
         }
 
         let rock = 0;
-        for (const genId of genIds) {
+        for (const genId of details) {
             const decoded = decodeHeroDetails(genId);
             const config = heroConfig.get(decoded.rarity);
-            if (!config) continue;
+            if (!config) {
+                this.#logger.error(`config_burn_hero has no rarity=${decoded.rarity} (tx=${tx} hero=${decoded.heroId})`);
+                item.status = 'INVALID_NO_HERO_DATA';
+                item.message = `missing burn config for rarity ${decoded.rarity}`;
+                return item;
+            }
             rock += decoded.isHeroS ? config[0] : config[1];
         }
         if (rock <= 0) {
             item.status = 'INVALID_ZERO_ROCK';
             return item;
         }
+        this.#logger.info(
+            `priced tx=${tx} network=${network} heroes=${burnTx.hero_ids.length} rock=${rock} source=${fromEvent ? 'EVENT' : 'DB'}`,
+        );
         item.rockAmount = rock;
         const wallet = item.wallet;
         if (wallet) {

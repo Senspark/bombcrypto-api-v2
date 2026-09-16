@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deploy Status</title>
+    <style>
+        :root { color-scheme: dark; }
+        body { margin: 0; padding: 32px 20px; background: #14161a; color: #e6e8eb;
+               font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+        main { max-width: 900px; margin: 0 auto; }
+        h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+        .sub { color: #8b929c; font-size: 12px; margin-bottom: 24px; }
+        .warn { color: #ffc46b; }
+        .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .card { background: #1c1f24; border: 1px solid #2a2e35; border-radius: 8px;
+                padding: 16px 18px; margin-bottom: 12px; }
+        .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .grow { flex: 1; }
+        .name { font-weight: 600; font-size: 15px; }
+        .muted { color: #8b929c; font-size: 12px; }
+        a { color: #7fb0ff; }
+        .badge { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+                 padding: 3px 8px; border-radius: 999px; }
+        .IDLE     { background: #2a2e35; color: #9aa2ad; }
+        .BUILDING { background: #2b3a55; color: #7fb0ff; }
+        .SUCCESS  { background: #1e3a2b; color: #6ee7a0; }
+        .FAILED   { background: #45211f; color: #ff8b80; }
+        .kind { background: #23262c; color: #9aa2ad; }
+        button { font: inherit; font-size: 12.5px; font-weight: 600; border: 1px solid #2a2e35;
+                 background: #23262c; color: #e6e8eb; border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+        button:hover:enabled { border-color: #3a404a; }
+        button:disabled { opacity: .45; cursor: default; }
+        .link { background: none; border: 0; color: #7fb0ff; padding: 0; font-weight: 400; }
+        .runs { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+        .runs th { text-align: left; font-weight: 500; color: #8b929c; font-size: 11.5px;
+                   text-transform: uppercase; letter-spacing: .04em;
+                   padding: 0 12px 6px 0; border-bottom: 1px solid #2a2e35; }
+        .runs td { padding: 7px 12px 7px 0; border-bottom: 1px solid #23262c; vertical-align: top; }
+        .runs tr:last-child td { border-bottom: 0; }
+        .msg { color: #b8bec7; max-width: 300px; overflow-wrap: anywhere; }
+        code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+        .empty { color: #8b929c; }
+        .scroll { overflow-x: auto; }
+    </style>
+</head>
+<body>
+<main>
+    <div class="head">
+        <div>
+            <h1>Deploy Status</h1>
+            <div class="sub" id="updated">loading...</div>
+        </div>
+        <div class="row" id="account"></div>
+    </div>
+    <div id="sites"></div>
+</main>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+    // Author names and commit messages are written by whoever pushed, so nothing
+    // that arrives here is ever trusted as markup.
+    const esc = v => String(v).replace(/[&<>"']/g, c =>
+        ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+    const shortSha = sha => sha ? sha.slice(0, 7) : '-';
+    const when = ts => ts ? new Date(ts).toLocaleString() : '-';
+    const took = ms => ms == null ? '-' : (ms / 1000).toFixed(1) + 's';
+
+    let operator = null;
+    let clientId = '';
+    let signInRendered = false;
+    let busy = false;
+
+    async function api(path, options) {
+        const res = await fetch(path, {cache: 'no-store', ...options});
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || 'HTTP ' + res.status);
+        return body;
+    }
+
+    async function loadOperator() {
+        try {
+            operator = (await api('api/auth/me')).email;
+        } catch {
+            operator = null;
+        }
+        renderAccount();
+    }
+
+    function renderAccount() {
+        const box = document.getElementById('account');
+        if (operator) {
+            box.innerHTML = `<span class="muted">${esc(operator)}</span>
+                <button class="link" onclick="signOut()">Sign out</button>`;
+            signInRendered = false;
+            return;
+        }
+
+        box.innerHTML = '<div id="gbtn"></div>';
+        if (!clientId) {
+            box.innerHTML = '<span class="muted warn">Sign-in is not configured.</span>';
+            return;
+        }
+        // The library only appears once its script has loaded, and the page is
+        // useful without it: everything except the two buttons is public.
+        if (!window.google?.accounts?.id) return;
+        if (!signInRendered) {
+            google.accounts.id.initialize({client_id: clientId, callback: onCredential});
+            signInRendered = true;
+        }
+        google.accounts.id.renderButton(document.getElementById('gbtn'), {theme: 'filled_black', size: 'medium'});
+    }
+
+    async function onCredential(response) {
+        try {
+            operator = (await api('api/auth/google', {
+                method: 'POST',
+                headers: {'content-type': 'application/json'},
+                body: JSON.stringify({credential: response.credential}),
+            })).email;
+        } catch (e) {
+            alert('Sign-in refused: ' + e.message);
+            return;
+        }
+        renderAccount();
+        refresh();
+    }
+
+    async function signOut() {
+        await api('api/auth/logout', {method: 'POST'}).catch(() => {});
+        operator = null;
+        signInRendered = false;
+        renderAccount();
+        refresh();
+    }
+
+    async function rollback(site, commit) {
+        if (!confirm(`Roll ${site} back to ${commit.slice(0, 7)}?\n\nProduction is replaced by the archived copy of that commit.`)) return;
+        await act('api/rollback/' + encodeURIComponent(site), commit);
+    }
+
+    async function act(path, commit) {
+        busy = true;
+        render(lastSites);
+        try {
+            await api(path, {
+                method: 'POST',
+                headers: {'content-type': 'application/json'},
+                body: JSON.stringify({commit}),
+            });
+        } catch (e) {
+            alert('Refused: ' + e.message);
+        } finally {
+            busy = false;
+            refresh();
+        }
+    }
+
+    function runs(site) {
+        const history = site.history || [];
+        if (!history.length) return '<div class="muted" style="margin-top:14px">No deploys recorded yet.</div>';
+
+        const backups = new Set(site.backups || []);
+        return `<div class="scroll"><table class="runs">
+            <thead><tr><th>What</th><th>Status</th><th>Commit</th><th>By</th><th>Message</th><th>Started</th><th>Took</th><th></th></tr></thead>
+            <tbody>${history.map(r => `
+                <tr>
+                    <td><span class="badge kind">${r.kind === 'pr' ? 'PR #' + esc(r.prNumber) : esc(r.kind)}</span></td>
+                    <td><span class="badge ${esc(r.status)}">${esc(r.status)}</span></td>
+                    <td><code>${shortSha(r.commit)}</code></td>
+                    <td>${esc(r.actor || r.author || '-')}</td>
+                    <td class="msg">${r.commitMessage ? esc(r.commitMessage) : '-'}</td>
+                    <td>${when(r.startedAt)}</td>
+                    <td>${took(r.durationMs)}</td>
+                    <td>${rollbackButton(site, r, backups)}</td>
+                </tr>`).join('')}</tbody>
+        </table></div>`;
+    }
+
+    // Only a branch build that succeeded and whose archived copy is still on
+    // disk can be rolled back to; everything else has nothing to restore from.
+    function rollbackButton(site, run, backups) {
+        if (!operator || run.kind !== 'build' || run.status !== 'SUCCESS' || !backups.has(run.commit)) return '';
+        const disabled = busy || site.status === 'BUILDING' ? 'disabled' : '';
+        return `<button ${disabled} onclick="rollback('${esc(site.name)}', '${esc(run.commit)}')">Rollback</button>`;
+    }
+
+    function hostLink(url) {
+        return url ? `<a href="${esc(url)}" target="_blank" rel="noreferrer">${esc(new URL(url).host)}</a>` : '';
+    }
+
+    let lastSites = [];
+
+    function render(sites) {
+        lastSites = sites;
+        if (!sites.length) {
+            document.getElementById('sites').innerHTML = '<div class="card empty">No sites configured.</div>';
+            return;
+        }
+        document.getElementById('sites').innerHTML = sites.map(s => `
+            <div class="card">
+                <div class="row">
+                    <span class="name">${esc(s.name)}</span>
+                    <span class="badge ${esc(s.status)}">${esc(s.status)}</span>
+                    <span class="muted"><code>${esc(s.branch)}</code></span>
+                    <span class="muted grow">${hostLink(s.previewUrl)} ${s.url && s.previewUrl ? '->' : ''} ${hostLink(s.url)}</span>
+                </div>
+                ${runs(s)}
+            </div>`).join('');
+    }
+
+    async function refresh() {
+        const updated = document.getElementById('updated');
+        try {
+            const data = await api('api/sites');
+            // The Google script loads on its own schedule, so the sign-in
+            // button is re-attempted here until it has something to attach to.
+            if (data.googleClientId !== clientId || (!operator && !signInRendered)) {
+                clientId = data.googleClientId || '';
+                renderAccount();
+            }
+            render(data.sites);
+            updated.textContent = 'Updated ' + new Date().toLocaleTimeString();
+            // Without this the page would look merely quiet while the builder is
+            // gone, which reads the same as nobody having pushed anything.
+            updated.className = data.builderReachable ? 'sub' : 'sub warn';
+            if (!data.builderReachable) {
+                updated.textContent += ' - builder unreachable, this may be stale';
+            }
+        } catch (e) {
+            updated.className = 'sub warn';
+            updated.textContent = 'Cannot reach the API: ' + e.message;
+        }
+    }
+
+    loadOperator();
+    refresh();
+    setInterval(refresh, 5000);
+</script>
+</body>
+</html>

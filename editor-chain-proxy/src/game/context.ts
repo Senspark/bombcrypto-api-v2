@@ -49,16 +49,24 @@ export class GameContext {
     contract: Contract,
     name: string,
     args: unknown[],
-    opts?: { estimateArgs?: unknown[]; noGas?: boolean },
+    opts?: { estimateArgs?: unknown[]; noGas?: boolean; value?: bigint },
   ): Promise<TransactionReceipt | null> {
     const fn = contract.getFunction(name);
+    // A payable method needs msg.value on the estimate too, or the estimate reverts on the
+    // contract's own price check before it ever reaches the send.
+    const value = opts?.value;
     if (opts?.noGas) {
-      const tx = await fn(...args);
+      const tx = value === undefined ? await fn(...args) : await fn(...args, { value });
       return waitForReceipt(tx);
     }
-    const est = await fn.estimateGas(...(opts?.estimateArgs ?? args));
+    const estArgs = opts?.estimateArgs ?? args;
+    const est = value === undefined
+      ? await fn.estimateGas(...estArgs)
+      : await fn.estimateGas(...estArgs, { value });
     const overrides = await gasOverrides(this.provider, this.chainId, est);
-    const tx = await fn(...args, overrides);
+    const tx = value === undefined
+      ? await fn(...args, overrides)
+      : await fn(...args, { ...overrides, value });
     return waitForReceipt(tx);
   }
 }
