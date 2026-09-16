@@ -110,12 +110,3 @@ export function buildMessage(site: IBuildSiteState, state: IDeployState, dashboa
                     + footer;
     }
 }
-
-export function builderLostMessage(reason: string): string {
-    return `:warning: deployer cannot reach the builder: ${esc(reason)}`
-        + `\nBuilds may be running without being reported here.`;
-}
-
-export function builderBackMessage(): string {
-    return `:arrows_counterclockwise: deployer reconnected to the builder.`;
-}

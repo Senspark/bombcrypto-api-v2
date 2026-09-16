@@ -2,7 +2,7 @@ import IBuildClient from "../services/IBuildClient";
 import IBuildSnapshotSource, {IBuildSnapshot} from "../services/IBuildSnapshot";
 import INotifier from "../services/INotifier";
 import ILogger from "../services/ILogger";
-import {buildMessage, builderBackMessage, builderLostMessage} from "../utils/SlackMessage";
+import {buildMessage} from "../utils/SlackMessage";
 
 export default class BuildPoller implements IBuildSnapshotSource {
     readonly #logger: ILogger;
@@ -51,14 +51,16 @@ export default class BuildPoller implements IBuildSnapshotSource {
         try {
             snapshot = await this.#client.snapshot();
         } catch (e) {
-            await this.#markUnreachable((e as Error).message);
+            // Logged, never announced: a single slow poll is enough to trip this,
+            // and the dashboard already shows the real state.
+            this.#reachable = false;
+            this.#logger.error(`cannot reach builder: ${(e as Error).message}`);
             return;
         }
 
         if (!this.#reachable) {
             this.#reachable = true;
             this.#logger.info('builder reachable again');
-            await this.#notifier.send(builderBackMessage());
         }
         this.#snapshot = snapshot;
 
@@ -86,15 +88,5 @@ export default class BuildPoller implements IBuildSnapshotSource {
         for (const key of this.#notified) {
             if (!live.has(key)) this.#notified.delete(key);
         }
-    }
-
-    async #markUnreachable(reason: string): Promise<void> {
-        this.#logger.error(`cannot reach builder: ${reason}`);
-        if (!this.#reachable) return;
-
-        // Silence is indistinguishable from "nobody pushed", so it has to be said
-        // out loud once - but only on the transition, not every poll.
-        this.#reachable = false;
-        await this.#notifier.send(builderLostMessage(reason));
     }
 }

@@ -157,6 +157,10 @@ services:
       dockerfile: Dockerfile
     container_name: ap-web-builder
     command: ["node", "dist/Builder.js"]
+    # git clone/fetch spawn helpers of their own. When the parent git is killed
+    # on timeout they are reparented to PID 1, and node never reaps a process it
+    # did not spawn itself - they stay zombies for the life of the container.
+    init: true
     networks:
       - web_builder
     env_file:
