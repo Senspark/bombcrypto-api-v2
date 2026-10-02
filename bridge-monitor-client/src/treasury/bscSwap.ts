@@ -1,11 +1,11 @@
 // BSC quote + calldata for the treasury flow, via PancakeSwap SmartRouter. Candidate pools + quotes
 // are fetched purely on-chain through a viem client (no subgraph, no backend).
 import {parseUnits} from "ethers";
-import {createPublicClient, http, type Address} from "viem";
+import {createPublicClient, fallback, http, type Address} from "viem";
 import {bsc} from "viem/chains";
 import {ChainId, CurrencyAmount, Percent, Token, TradeType} from "@pancakeswap/sdk";
 import {PoolType, SMART_ROUTER_ADDRESSES, SmartRouter, SwapRouter} from "@pancakeswap/smart-router";
-import {BSC_RPC, type SwapRoute} from "./config";
+import {BSC_RPCS, type SwapRoute} from "./config";
 import {readProvider} from "./wallet";
 import {ERC20_ABI, type Quote} from "./types";
 import {Contract} from "ethers";
@@ -14,7 +14,7 @@ export const SMART_ROUTER = SMART_ROUTER_ADDRESSES[ChainId.BSC];
 
 const client = createPublicClient({
     chain: bsc,
-    transport: http(BSC_RPC),
+    transport: fallback(BSC_RPCS.map((url) => http(url))),
     batch: {multicall: {batchSize: 1024 * 200, wait: 16}},
 });
 const onChainProvider = () => client;

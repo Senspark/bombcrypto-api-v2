@@ -1,8 +1,18 @@
-// Wallet plumbing for the treasury flow. Reads go through per-chain JsonRpcProviders (independent of
+// Wallet plumbing for the treasury flow. Reads go through per-chain read providers (independent of
 // the wallet's current chain); the wallet is only touched to sign the swap / withdraw tx.
-import {BrowserProvider, JsonRpcProvider, JsonRpcSigner} from "ethers";
+import {
+    BrowserProvider,
+    FetchRequest,
+    JsonRpcApiProvider,
+    JsonRpcProvider,
+    JsonRpcSigner,
+    Network,
+    type JsonRpcError,
+    type JsonRpcPayload,
+    type JsonRpcResult,
+} from "ethers";
 import {ref} from "vue";
-import {BSC_CHAIN_ID, BSC_RPC, POLYGON_CHAIN_ID, POLYGON_RPC} from "./config";
+import {BSC_CHAIN_ID, BSC_RPCS, POLYGON_CHAIN_ID, POLYGON_RPCS} from "./config";
 
 export function eth(): any {
     const e = (window as any).ethereum;
@@ -10,12 +20,52 @@ export function eth(): any {
     return e;
 }
 
-const readProviders: Record<number, JsonRpcProvider> = {};
+// ethers' FallbackProvider with quorum 1 surfaces the first error (a rate limit included) instead of
+// moving on, so fail over by hand: a transport error or any JSON-RPC error tries the next RPC, and the
+// last one that answered cleanly is tried first next time. A genuine revert still surfaces once every
+// RPC has returned it.
+class FailoverProvider extends JsonRpcApiProvider {
+    readonly #rpcs: JsonRpcProvider[];
+    #current = 0;
 
-export function readProvider(chainId: number): JsonRpcProvider {
+    constructor(urls: string[], chainId: number) {
+        const network = Network.from(chainId);
+        super(network, {staticNetwork: network});
+        this.#rpcs = urls.map((url) => {
+            const req = new FetchRequest(url);
+            // FetchRequest retries a 429 with backoff for up to 12 attempts; fail over right away instead.
+            req.setThrottleParams({maxAttempts: 1});
+            return new JsonRpcProvider(req, network, {staticNetwork: network});
+        });
+    }
+
+    async _send(payload: JsonRpcPayload | JsonRpcPayload[]): Promise<(JsonRpcResult | JsonRpcError)[]> {
+        let last: (JsonRpcResult | JsonRpcError)[] | undefined;
+        let lastError: unknown;
+        for (let i = 0; i < this.#rpcs.length; i++) {
+            const index = (this.#current + i) % this.#rpcs.length;
+            try {
+                const res = await this.#rpcs[index]._send(payload);
+                if (!res.some((r) => "error" in r)) {
+                    this.#current = index;
+                    return res;
+                }
+                last = res;
+            } catch (e) {
+                lastError = e;
+            }
+        }
+        if (last) return last;
+        throw lastError;
+    }
+}
+
+const readProviders: Record<number, FailoverProvider> = {};
+
+export function readProvider(chainId: number): JsonRpcApiProvider {
     if (!readProviders[chainId]) {
-        const rpc = chainId === BSC_CHAIN_ID ? BSC_RPC : POLYGON_RPC;
-        readProviders[chainId] = new JsonRpcProvider(rpc, chainId, {staticNetwork: true});
+        const rpcs = chainId === BSC_CHAIN_ID ? BSC_RPCS : POLYGON_RPCS;
+        readProviders[chainId] = new FailoverProvider(rpcs, chainId);
     }
     return readProviders[chainId];
 }

@@ -4,9 +4,21 @@
 export const POLYGON_CHAIN_ID = 137;
 export const BSC_CHAIN_ID = 56;
 
-// Read RPCs (balances + quotes) are independent of the wallet's current chain. Override via env.
-export const POLYGON_RPC = import.meta.env.VITE_POLYGON_RPC || "https://polygon-bor-rpc.publicnode.com";
-export const BSC_RPC = import.meta.env.VITE_BSC_RPC || "https://bsc-dataseed.binance.org";
+// Read RPCs (balances + quotes) are independent of the wallet's current chain; tried in order, the next
+// one taking over when a public endpoint rate-limits. Override via env as a comma-separated list.
+const rpcList = (env: string | undefined, defaults: string[]) => (env ? env.split(",").map((s) => s.trim()) : defaults);
+export const POLYGON_RPCS = rpcList(import.meta.env.VITE_POLYGON_RPC, [
+    "https://polygon-bor-rpc.publicnode.com",
+    "https://polygon.drpc.org",
+    "https://gateway.tenderly.co/public/polygon",
+    "https://rpc-mainnet.matic.quiknode.pro",
+]);
+export const BSC_RPCS = rpcList(import.meta.env.VITE_BSC_RPC, [
+    "https://bsc-dataseed.bnbchain.org",
+    "https://bsc-rpc.publicnode.com",
+    "https://rpc-bsc.48.club",
+    "https://bsc.nodereal.io",
+]);
 
 export const POLYGON_USDT = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
 export const BSC_USDT = "0x55d398326f99059fF775485246999027B3197955";
