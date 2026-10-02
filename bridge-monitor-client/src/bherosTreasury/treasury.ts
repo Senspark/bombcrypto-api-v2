@@ -18,6 +18,7 @@ const BHEROS_ABI = [
     "function withdrawCustomToken(address value)",
     "function treasurySplitter() view returns (address)",
     "function withdrawToTreasury(address token, uint256 amount, address router, bytes swapCalldata, uint256 minUsdtOut) returns (uint256)",
+    "function withdrawNative(address to, uint256 amount)",
 ];
 
 export async function readBHeroSUsdtBalance(instance: BHeroSInstance, usdtAddress: string): Promise<{usdt: bigint; decimals: number}> {
@@ -100,6 +101,21 @@ export async function withdrawBHeroSToken(instance: BHeroSInstance, tokenAddress
     const signer = await walletSigner(instance.chainId);
     const contract = new Contract(instance.address, BHEROS_ABI, signer);
     const tx = await contract.withdrawCustomToken(tokenAddress);
+    await tx.wait();
+    return tx.hash;
+}
+
+// --- native (BNB / POL) from upgradeHero / resetSkill / resetSkin ---
+
+export async function readBHeroSNativeBalance(instance: BHeroSInstance): Promise<bigint> {
+    return readProvider(instance.chainId).getBalance(instance.address);
+}
+
+// withdrawNative takes explicit to/amount. The whole balance is sale proceeds, so any amount up to it is free to take.
+export async function withdrawBHeroSNative(instance: BHeroSInstance, to: string, amount: bigint): Promise<string> {
+    const signer = await walletSigner(instance.chainId);
+    const contract = new Contract(instance.address, BHEROS_ABI, signer);
+    const tx = await contract.withdrawNative(to, amount);
     await tx.wait();
     return tx.hash;
 }

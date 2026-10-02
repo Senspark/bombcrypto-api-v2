@@ -6,6 +6,7 @@ import {walletAccount} from "../treasury/wallet";
 import WalletToolbar from "../treasury/WalletToolbar.vue";
 import DistributeCard from "./DistributeCard.vue";
 import WithdrawBHeroSPanel from "./WithdrawBHeroSPanel.vue";
+import WithdrawBHeroSNativePanel from "./WithdrawBHeroSNativePanel.vue";
 
 const panels = ref<Record<string, InstanceType<typeof WithdrawBHeroSPanel> | null>>({});
 
@@ -27,7 +28,8 @@ function onSwapped(instanceId: string) {
         Manager (WITHDRAWER_ROLE) chia phí Hero sale 4 chân trong một tx, cả 4 đều là chuyển token
         phí: community / marketing / burn sang 3 treasury, phần dev sang Treasury Dev — đổi sang USDT
         là thao tác riêng ở tab Treasury Dev. Toàn bộ balance là phí — BHeroS không giữ tiền của
-        người dùng. Ví phải có WITHDRAWER_ROLE, cần BNB/POL trả gas.
+        người dùng. BNB/POL user trả cho upgrade / reset skill / reset skin nằm riêng, rút bằng
+        withdrawNative ở ô cuối mỗi cột. Ví phải có WITHDRAWER_ROLE, cần BNB/POL trả gas.
     </p>
 
     <div class="chain-grid">
@@ -48,6 +50,7 @@ function onSwapped(instanceId: string) {
                 :ref="(el) => (panels[instance.id] = el as any)"
                 :instance="instance" :usdt-address="routesFor(instance)[0].tokenOut" :owner="walletAccount"
             />
+            <WithdrawBHeroSNativePanel :instance="instance" :owner="walletAccount"/>
         </div>
     </div>
 </template>
