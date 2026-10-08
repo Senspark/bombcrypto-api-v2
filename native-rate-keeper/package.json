@@ -1,0 +1,15 @@
+{
+    "name": "native-rate-keeper",
+    "version": "1.0.0",
+    "description": "Daily job that keeps HeroDesign.nativeRate on BSC and Polygon pegged to the BCOIN price",
+    "type": "module",
+    "engines": {
+        "node": ">=24"
+    },
+    "scripts": {
+        "start": "node --env-file=.env native-rate.mjs"
+    },
+    "dependencies": {
+        "ethers": "^6.13.5"
+    }
+}

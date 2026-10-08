@@ -1,0 +1,1 @@
+@NATIVE_RATE_CRON@ /app/run.sh > /dev/null
