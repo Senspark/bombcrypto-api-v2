@@ -162,6 +162,12 @@ export async function handleGame(body: unknown) {
         return { result: await game().bheroS.mint(str(p, "walletAddress"), num(p, "count")) };
       case "UPGRADE_HERO":
         return { result: await game().bhero.upgrade(str(p, "walletAddress"), num(p, "baseId"), num(p, "materialId")) };
+      case "GET_UPGRADE_V2_PRICE":
+        return { result: await game().bheroUpgradeV2.getPrice(num(p, "baseId")) };
+      case "UPGRADE_HERO_V2":
+        return { result: await game().bheroUpgradeV2.upgrade(str(p, "walletAddress"), num(p, "baseId"), num(p, "materialId")) };
+      case "GET_UPGRADE_V2_MAX_LEVEL":
+        return { result: await game().bheroUpgradeV2.getMaxLevel() };
       case "CLAIM_HERO":
         return { result: await game().bhero.claim(str(p, "walletAddress")) };
       case "PROCESS_TOKEN_REQUESTS":

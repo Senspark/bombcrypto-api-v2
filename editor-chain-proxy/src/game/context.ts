@@ -7,6 +7,13 @@ import { gasOverrides, waitForReceipt } from "./gas";
 // to the BrowserProvider; here a write is bound to `new Wallet(pk, provider)` and a
 // read to the JsonRpcProvider. One GameContext is built per `/game` call and holds
 // the (testnet-guarded) provider, the resolved chain, and — for writes — the signer.
+/// Aceita a chave com ou sem 0x. Colar do MetaMask traz sem o prefixo, e o ethers rejeita
+/// isso com "invalid BytesLike value", erro que nao diz o que fazer.
+function normalizeKey(key: string): string {
+  const k = key.trim();
+  return k.startsWith("0x") ? k : `0x${k}`;
+}
+
 export class GameContext {
   readonly signer: Wallet | null;
 
@@ -16,7 +23,7 @@ export class GameContext {
     readonly chainId: number,
     privateKey?: string,
   ) {
-    this.signer = privateKey ? new Wallet(privateKey, provider) : null;
+    this.signer = privateKey ? new Wallet(normalizeKey(privateKey), provider) : null;
   }
 
   requireSigner(): Wallet {
